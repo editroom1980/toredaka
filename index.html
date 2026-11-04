@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="トレダカ">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<script>window.TOREDAKA_BUILD = "20261105002030";</script>
+<script>window.TOREDAKA_BUILD = "20261105002816";</script>
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 </head><body>
 <title>トレダカ</title>
@@ -141,11 +141,16 @@ h3 { font-family: var(--mincho); font-size: 14px; font-weight: 800; letter-spaci
     linear-gradient(var(--gold), var(--gold)) right bottom / 16px 2.5px no-repeat, linear-gradient(var(--gold), var(--gold)) right bottom / 2.5px 16px no-repeat,
     var(--surface); }
 .nextlab { font-size: 12px; font-weight: 700; letter-spacing: .2em; color: var(--accent); }
+.qanchor { scroll-margin-top: 8px; }
 .row.flash { animation: flash 1.2s ease-out 1; }
 @keyframes flash { 0% { box-shadow: 0 0 0 6px var(--accent-bg); } 100% { box-shadow: 0 0 0 0 transparent; } }
 .row.off { opacity: .55; }
 .tick { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; background: var(--surface); }
 .row.next .tick { border-color: var(--gold); }
+.row.iv.asking { box-shadow: 0 0 0 3px var(--rec); border-color: transparent; }
+.ivcount { font-size: 13px; font-weight: 700; color: var(--muted); }
+.ivcount b { font-family: var(--mincho); font-weight: 800; font-size: 18px; color: var(--ink); margin-left: 2px; }
+.row.done .ivcount b { color: var(--ok); }
 .row.done .tick { background: var(--ok); border-color: var(--ok); }
 .tick svg { width: 16px; height: 16px; opacity: 0; }
 .row.done .tick svg { opacity: 1; }
@@ -375,10 +380,24 @@ function qState(id) {
   return { asked: starts.length > 0, asking, done: ends.length > 0 && !asking, n: starts.length, good: goods.length, last: starts[starts.length - 1] };
 }
 const cutsUsed = () => items().filter(it => it.kind !== 'q' && used(it));
-const isDone = it => evFor('cut', it.id).length > 0;
+// インタビューの区間（質問だけの区間）は、撮影の並びに1行で出す。数えるのは質問のタブで押した記録
+const qsOf = secId => items().filter(it => it.kind === 'q' && used(it) && it.section === secId);
+function ivRows() { return sections().filter(s => qsOf(s.id).length).map(s => ({ id: 'iv:' + s.id, kind: 'iv', section: s.id, time: s.time || '', text: s.name })); }
+function ivState(secId) {
+  const st = qsOf(secId).map(q => qState(q.id));
+  return { n: st.length, asked: st.filter(x => x.asked).length, asking: st.some(x => x.asking), good: st.reduce((t, x) => t + x.good, 0), done: st.length > 0 && st.every(x => x.asked && !x.asking) };
+}
+const isDone = it => it.kind === 'iv' ? ivState(it.section).done : evFor('cut', it.id).length > 0;
+// 録画とファイル：カメラの「最初のファイル」（例 C0124）があれば、n 回目の録画を C0124 から数えたファイル名で出す
+function fileOf(camId, n) {
+  const c = cams().find(x => x.id === camId), m = c && /^(.*?)(\d+)$/.exec(String(c.first || '').trim());
+  return m && n ? m[1] + String(+m[2] + n - 1).padStart(m[2].length, '0') : '';
+}
+const recLabel = r => `${r.cam}${fileOf(r.cam, r.clip) ? ' ' + fileOf(r.cam, r.clip) : '#' + r.clip}`;
+const runLabel = (id, s) => `${dur(Date.now() - s.since)} ${fileOf(id, s.clip) || '#' + s.clip}`;
 // 次に撮る：撮影の日なら、時刻が来ていてまだ撮れていない行のうち最後のもの。そうでなければ、撮る時刻の順（時刻の無い行は区間の順で後ろ）でまだ撮れていない最初の行
 function nextItem() {
-  const list = cutsUsed();
+  const list = cutsUsed().concat(ivRows());
   if (!list.length) return null;
   if (EP && EP.date) {
     const d = new Date(), iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -503,11 +522,24 @@ function editRowHTML(it) {
       ${it.src === 'field' ? `<span class="acts"><button class="btn small danger" type="button" data-act="delItem" data-id="${esc(it.id)}">消す</button></span>` : ''}
     </span></label>`;
 }
+function ivRowHTML(it, nextId) {
+  const s = ivState(it.section);
+  return `<div class="row iv${s.done ? ' done' : ''}${s.asking ? ' asking' : ''}${nextId === it.id ? ' next' : ''}" role="button" tabindex="0" data-act="goQs" data-sec="${esc(it.section)}" aria-label="${esc(it.text)}　質問のタブへ">
+    <span class="tick">${TICK}</span>
+    <span class="body">
+      <span class="meta">${it.time ? `<span class="tm">${esc(it.time)}</span>` : ''}<span class="pill">インタビュー</span>${s.asking ? '<span class="tag">聞いている</span>' : ''}</span>
+      <span class="what">${esc(it.text)}</span>
+      <span class="ivcount">聞いた質問<b>${s.asked}</b>/${s.n}${s.good ? `　<span class="stars">${'★'.repeat(Math.min(s.good, 3))}</span>` : ''}</span>
+      ${nextId === it.id ? '<span class="nextlab">次に撮る</span>' : ''}
+      <span class="note">押すと、質問のタブのこの区間へ</span>
+    </span></div>`;
+}
 function rowHTML(it, nextId) {
+  if (it.kind === 'iv') return ivRowHTML(it, nextId);
   if (editing) return editRowHTML(it);
   const done = evFor('cut', it.id);
   const last = done[done.length - 1];
-  const stamp = last ? `<span class="stamp">撮れた ${hm(last.at)}${(last.recs || []).map(r => ` ${r.cam}#${r.clip}`).join('')}</span>` : '';
+  const stamp = last ? `<span class="stamp">撮れた ${hm(last.at)}${(last.recs || []).map(r => ` ${recLabel(r)} ${dur(r.off * 1000)}`).join('')}</span>` : '';
   return `<div class="row${it.must ? ' must' : ''}${last ? ' done' : ''}${nextId === it.id ? ' next' : ''}" role="checkbox" aria-checked="${last ? 'true' : 'false'}" tabindex="0" data-act="cut" data-id="${esc(it.id)}">
     <span class="tick">${TICK}</span>
     <span class="body">
@@ -532,7 +564,7 @@ function secNote(sec) {
 }
 function toolbar(where, extra) {
   return `<div class="bar">${extra || '<span class="spacer"></span>'}
-    <button class="btn small" type="button" data-act="edit" aria-pressed="${editing}">${editing ? '編集を終える' : '編集'}</button>
+    <button class="btn small" type="button" data-act="edit" aria-pressed="${editing}">${editing ? '選び終える' : '使う項目'}</button>
     <button class="btn small gold" type="button" data-act="add" data-where="${where}" aria-expanded="${addOpen === where}">＋ 足す</button></div>` + (addOpen === where ? addForm(where) : '');
 }
 function addForm(where) {
@@ -565,7 +597,7 @@ function callSheet(next) {
   </section>`;
 }
 function viewDay() {
-  const list = items().filter(it => it.kind !== 'q' && (editing || used(it)));
+  const list = items().filter(it => it.kind !== 'q' && (editing || used(it))).concat(editing ? [] : ivRows());
   const next = editing ? null : nextItem();
   const nextId = next ? next.id : null;
   let body = '';
@@ -576,7 +608,8 @@ function viewDay() {
     body = sections().concat([{ id: '', name: '区間なし' }]).map(sec => {
       const its = list.filter(it => (it.section || '') === sec.id);
       if (!its.length) return '';
-      return secHead(sec, `${its.filter(isDone).length}/${its.length}`) + its.map(it => rowHTML(it, nextId)).join('');
+      const iv = its.every(it => it.kind === 'iv') ? ivState(sec.id) : null;
+      return secHead(sec, iv ? `${iv.asked}/${iv.n}問` : `${its.filter(isDone).length}/${its.length}`) + its.map(it => rowHTML(it, nextId)).join('');
     }).join('');
   }
   const seg = `<div class="seg"><button type="button" data-act="dayView" data-v="sec" aria-pressed="${dayView === 'sec'}">区間の順</button><button type="button" data-act="dayView" data-v="time" aria-pressed="${dayView === 'time'}">時刻の順</button></div>`;
@@ -589,7 +622,7 @@ function viewQs() {
   else body = sections().concat([{ id: '', name: '区間なし' }]).map(sec => {
     const its = qs.filter(it => (it.section || '') === sec.id);
     if (!its.length) return '';
-    return secHead(sec, `${its.filter(it => qState(it.id).done).length}/${its.length}`) + its.map(it => {
+    return `<div class="qanchor" id="qsec-${esc(sec.id)}"></div>` + secHead(sec, `${its.filter(it => qState(it.id).done).length}/${its.length}`) + its.map(it => {
       if (editing) return editRowHTML(it);
       const s = qState(it.id);
       const cls = s.asking ? ' asking' : s.done ? ' done' : '';
@@ -599,7 +632,7 @@ function viewQs() {
       return `<div class="q${it.must ? ' must' : ''}${cls}">
         <div class="qt"><span class="no">${esc(it.no || '')}</span><span class="txt">${esc(it.text)}</span></div>
         ${it.note ? `<span class="note">${esc(it.note)}</span>` : ''}
-        ${s.asked ? `<span class="stamp">${s.asking ? '聞いている　' : ''}${hm(s.last.at)}${(s.last.recs || []).map(r => ` ${r.cam}#${r.clip} ${dur(r.off * 1000)}`).join('')}${s.n > 1 ? `　${s.n}回` : ''}${s.good ? `　<span class="stars">${'★'.repeat(Math.min(s.good, 3))}</span>` : ''}</span>` : ''}
+        ${s.asked ? `<span class="stamp">${s.asking ? '聞いている　' : ''}${hm(s.last.at)}${(s.last.recs || []).map(r => ` ${recLabel(r)} ${dur(r.off * 1000)}`).join('')}${s.n > 1 ? `　${s.n}回` : ''}${s.good ? `　<span class="stars">${'★'.repeat(Math.min(s.good, 3))}</span>` : ''}</span>` : ''}
         <div class="acts">${btns}</div></div>`;
     }).join('');
   }).join('');
@@ -725,7 +758,7 @@ function viewLog() {
   $('v-log').innerHTML = `<div class="wrap">
     ${!ev.length ? '<p class="empty">まだ何も押していません。録画を始めると、ここに新しい順で残ります。</p>' : ev.map(e => {
       const it = byId[e.ref];
-      const where = e.k === 'rec' || e.k === 'stop' ? `カメラ${e.cam} #${e.clip || ''}` : (e.recs || []).map(r => `${r.cam}#${r.clip} ${dur(r.off * 1000)}`).join('　') || '録画していないとき';
+      const where = e.k === 'rec' || e.k === 'stop' ? `カメラ${e.cam} ${fileOf(e.cam, e.clip) || '#' + (e.clip || '')}` : (e.recs || []).map(r => `${recLabel(r)} ${dur(r.off * 1000)}`).join('　') || '録画していないとき';
       return `<div class="log k-${e.k}">
         <span class="lt">${hms(e.at)}</span>
         <span class="lw"><b>${KLABEL[e.k] || e.k}</b>${it ? `　${esc(it.no ? it.no + ' ' : '')}${esc(it.text).slice(0, 40)}` : ''}<small>${esc(where)}</small>
@@ -754,12 +787,12 @@ function viewSet() {
         return `<div class="camrow">
           <span class="cid">${esc(c.id)}</span>
           <label class="field" for="camName${i}"><span>名前</span><input id="camName${i}" data-cam="${i}" data-f="name" value="${esc(c.name || '')}" placeholder="FX6"></label>
-          <label class="field" for="camPre${i}"><span>ファイル名の頭</span><input id="camPre${i}" data-cam="${i}" data-f="prefix" value="${esc(c.prefix || '')}" placeholder="FX_"></label>
+          <label class="field" for="camFirst${i}"><span>最初のファイル</span><input id="camFirst${i}" data-cam="${i}" data-f="first" value="${esc(c.first || '')}" placeholder="${esc((c.prefix || 'C') + '0001')}" autocapitalize="characters" autocomplete="off"></label>
           <button class="btn danger${camDel === c.id ? ' sure' : ''}" type="button" data-act="delCam" data-cam-id="${esc(c.id)}"${cams().length <= 1 || (st[c.id] || {}).on ? ' disabled' : ''}>消す</button>
           ${camDel === c.id ? `<p class="camwarn">カメラ${esc(c.id)}には押した記録が${n}件あります。消しても記録は残ります。消すときは、もう一度「消す」を押します。</p>` : ''}
         </div>`;
       }).join('')}
-      <p class="lead">ファイル名の頭を書くと、仮編集でクリップと結びつけます。</p>
+      <p class="lead">撮影を始める前に、カメラごとに、これから撮られるファイルの番号を入れます（カメラの再生画面で最後のファイルを見て、その次の番号。例 C0124）。押した記録に実際のファイル名が付き、仮編集はこの番号から数えてファイルと結びます。</p>
       <button class="btn small" data-act="addCam" type="button">＋ カメラを足す</button>
     </div>
     <h3>時刻合わせ</h3>
@@ -813,7 +846,7 @@ function recbar() {
   $('recrow').style.setProperty('--cams', cs.length);
   $('recrow').innerHTML = cs.map(c => {
     const s = st[c.id];
-    return `<button class="rec${s.on ? ' on' : ''}" data-act="rec" data-cam="${esc(c.id)}" aria-pressed="${s.on}" aria-label="カメラ${esc(c.id)} ${s.on ? '録画を止める' : '録画を始める'}"><b><i aria-hidden="true"></i>${esc(c.id)}${s.on ? ' REC' : ''}</b><small data-run="${esc(c.id)}">${s.on ? dur(Date.now() - s.since) + ' #' + s.clip : (esc(c.name || '') + (s.clip ? ' 次#' + (s.clip + 1) : '') || '&#12288;')}</small></button>`;
+    return `<button class="rec${s.on ? ' on' : ''}" data-act="rec" data-cam="${esc(c.id)}" aria-pressed="${s.on}" aria-label="カメラ${esc(c.id)} ${s.on ? '録画を止める' : '録画を始める'}"><b><i aria-hidden="true"></i>${esc(c.id)}${s.on ? ' REC' : ''}</b><small data-run="${esc(c.id)}">${s.on ? runLabel(c.id, s) : (esc(c.name || '') + (s.clip || c.first ? ' 次 ' + (fileOf(c.id, s.clip + 1) || '#' + (s.clip + 1)) : '') || '&#12288;')}</small></button>`;
   }).join('') + `<button class="mark" data-act="mark">印</button>`;
 }
 function counts() {
@@ -873,6 +906,7 @@ document.addEventListener('click', e => {
   if (act === 'exportAll') { exportAll(); return; }
   if (act === 'importOpen') { importOpen(); return; }
   if (act === 'copyEp') { copyEp(); return; }
+  if (act === 'goQs') { goTab('qs'); const el = document.getElementById('qsec-' + a.dataset.sec); if (el) el.scrollIntoView({ block: 'start' }); return; }
   if (act === 'pasteOpen') { sheetOpen = false; pasteMode = 'in'; render(); return; }
   if (act === 'pasteClose') { pasteMode = null; document.activeElement && document.activeElement.blur(); render(); return; }
   if (act === 'pasteRead') { try { navigator.clipboard.readText().then(t => { $('pasteIn').value = t; toast('貼りました。「読み込む」を押してください'); }, () => { $('pasteIn').focus(); toast('欄を長押しして「ペースト」を押してください'); }); } catch (err) { $('pasteIn').focus(); } return; }
@@ -903,7 +937,7 @@ document.addEventListener('change', e => {
   const el = e.target;
   if (el.id === 'importIn') { if (el.files && el.files[0]) importFile(el.files[0]); return; }
   if (el.dataset.use) { saveItems(items().map(it => it.id === el.dataset.use ? Object.assign({}, it, { use: el.checked }) : it)); return; }
-  if (el.dataset.cam != null && el.dataset.f) { const cs = cams().map((c, i) => i === +el.dataset.cam ? Object.assign({}, c, { [el.dataset.f]: el.value.trim() }) : c); saveCams(cs); toast('保存しました'); return; }
+  if (el.dataset.cam != null && el.dataset.f) { const v = el.value.trim().toUpperCase(); const cs = cams().map((c, i) => { if (i !== +el.dataset.cam) return c; const n = Object.assign({}, c, { [el.dataset.f]: el.dataset.f === 'first' ? v : el.value.trim() }); const m = el.dataset.f === 'first' && /^(.*?)(\d+)$/.exec(v); if (m && m[1]) n.prefix = m[1].replace(/[_-]+$/, ''); return n; }); saveCams(cs); toast('保存しました'); return; }
   if (el.dataset.epf) { const v = el.value.trim(); if ((EP[el.dataset.epf] || '') !== v) { saveEp({ [el.dataset.epf]: v }); toast('保存しました'); } return; }
   if (el.dataset.ans) { const id = el.dataset.ans; clearTimeout(ansT[id]); if (((ANS[id] || {}).a || '') !== el.value) { saveAnswer(id, el.value); toast('保存しました'); } return; }
   if (el.classList.contains('noteIn')) { noteEvent(el.dataset.ev, el.value); toast('メモを残しました'); }
@@ -949,7 +983,7 @@ function tickClock() {
   $('clockS').textContent = `:${pad(d.getSeconds())}`;
   if (!$('clockov').hidden) $('bigclock').textContent = `${d.getHours()}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
   const st = recState();
-  document.querySelectorAll('[data-run]').forEach(el => { const s = st[el.dataset.run]; if (s && s.on) el.textContent = dur(Date.now() - s.since) + ' #' + s.clip; });
+  document.querySelectorAll('[data-run]').forEach(el => { const s = st[el.dataset.run]; if (s && s.on) el.textContent = runLabel(el.dataset.run, s); });
 }
 setInterval(tickClock, 250);
 setInterval(() => { if (tab === 'day' && !editing && !typingIn($('v-day'))) render(); }, 60000);
