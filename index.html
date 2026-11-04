@@ -1,0 +1,1003 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<meta name="theme-color" content="#f3eee3">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="トレダカ">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head><body>
+<title>トレダカ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=BIZ+UDGothic:wght@700&family=Shippori+Mincho+B1:wght@600;800&display=swap">
+<style>
+/* Layout: one-screen app. 番組の札（上）＋ 和紙の香盤（中）＋ 藍の録画の帯（下）。札の色は番組ごとに programs.color から入る */
+:root {
+  --bg: #f3eee3; --surface: #fffbf2; --surface2: #ebe3d1; --ink: #2a2318; --muted: #75684f; --line: #dccfb4;
+  --accent: #8f5d00; --accent-ink: #ffffff; --accent-bg: #f4e5c1; --gold: #c99212;
+  --ok: #2c6b40; --ok-bg: #e4ecd9; --rec: #d4302a; --rec-ink: #ffffff;
+  --deep: #1b2740; --deep2: #24324f; --deep-line: #3a4a6a; --deep-ink: #efe7d3; --deep-mute: #9aa4b8;
+  --plate: #d9a11c; --plate-ink: #3f2c06; --plate-sub: #5c4110; --plate-line: #f0d382; --plate-mark: #5c4110;
+  --scrim: rgba(27, 39, 64, .55);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .34 0 0 0 0 .2 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --flake: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='3' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 .96 0 0 0 0 .8 3.2 0 0 0 -2.05'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+  --font: "BIZ UDPGothic", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  --mincho: "Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --num: "BIZ UDGothic", "Hiragino Sans", ui-monospace, monospace;
+  --bar: 118px; --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111a2b; --surface: #182338; --surface2: #213049; --ink: #ece4d1; --muted: #9ba5b8; --line: #2d3c58;
+    --accent: #e3b64a; --accent-ink: #1d1404; --accent-bg: #2f2915; --gold: #e3b64a;
+    --ok: #82cf9c; --ok-bg: #16291f; --rec: #ff5242; --rec-ink: #ffffff;
+    --deep: #0a1120; --deep2: #16213a; --deep-line: #2e3d5c; --scrim: rgba(0, 0, 0, .6);
+    --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .7 0 0 0 0 .76 0 0 0 0 .9 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111a2b; --surface: #182338; --surface2: #213049; --ink: #ece4d1; --muted: #9ba5b8; --line: #2d3c58;
+  --accent: #e3b64a; --accent-ink: #1d1404; --accent-bg: #2f2915; --gold: #e3b64a;
+  --ok: #82cf9c; --ok-bg: #16291f; --rec: #ff5242; --rec-ink: #ffffff;
+  --deep: #0a1120; --deep2: #16213a; --deep-line: #2e3d5c; --scrim: rgba(0, 0, 0, .6);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .7 0 0 0 0 .76 0 0 0 0 .9 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg) var(--grain); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.5; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; touch-action: manipulation; }
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+#app { display: flex; flex-direction: column; height: 100%; }
+
+/* 上：番組の札。番組の名前は小さく、会社（回）の名前を大きく、撮影日と開始を1行で */
+.top { flex: 0 0 auto; display: flex; align-items: stretch; gap: 6px;
+  padding-block: 10px 8px; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(6px, env(safe-area-inset-right, 0px)); }
+.plate { position: relative; flex: 1; min-width: 0; text-align: left; border: 0; border-radius: 4px; color: var(--plate-ink);
+  background: var(--flake), var(--plate); padding: 12px 28px 13px;
+  box-shadow: inset 0 0 0 4px var(--plate), inset 0 0 0 5px var(--plate-line); display: flex; flex-direction: column; gap: 2px; }
+.plate::before, .plate::after { content: ""; position: absolute; width: 11px; height: 11px; pointer-events: none; }
+.plate::before { top: 9px; right: 10px; border-top: 1.5px solid var(--plate-mark); border-right: 1.5px solid var(--plate-mark); }
+.plate::after { bottom: 9px; left: 10px; border-bottom: 1.5px solid var(--plate-mark); border-left: 1.5px solid var(--plate-mark); }
+.plate small { font-family: var(--mincho); font-weight: 600; font-size: 12px; letter-spacing: .12em; color: var(--plate-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plate b { font-family: var(--mincho); font-weight: 800; font-size: 23px; line-height: 1.25; letter-spacing: .03em; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.plate b span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plate b::after { content: ""; flex: 0 0 auto; width: 6px; height: 6px; margin-top: -3px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); opacity: .6; }
+.plate .when { font-family: var(--mincho); font-weight: 600; font-size: 14px; letter-spacing: .04em; color: var(--plate-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.iconbtn { flex: 0 0 auto; align-self: center; width: 44px; height: 44px; border-radius: 10px; border: 0; background: none; color: var(--muted); display: grid; place-items: center; }
+.iconbtn[aria-current="page"] { background: var(--surface2); color: var(--ink); }
+.iconbtn svg { width: 22px; height: 22px; }
+
+.tabs { flex: 0 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--line);
+  padding: 0 max(8px, env(safe-area-inset-right, 0px)) 0 max(8px, env(safe-area-inset-left, 0px)); }
+.tabs button { border: 0; background: none; padding: 6px 2px 5px; font-weight: 700; font-size: 14px; letter-spacing: .08em; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -1px; }
+.tabs button small { display: block; font-family: var(--num); font-size: 11px; letter-spacing: 0; }
+.tabs button[aria-current="page"] { color: var(--ink); border-bottom-color: var(--gold); }
+.tabs button[aria-current="page"] small { color: var(--accent); }
+.warn { flex: 0 0 auto; background: var(--rec); color: var(--rec-ink); font-size: 13px; font-weight: 700; text-align: center;
+  padding: 6px max(16px, env(safe-area-inset-right, 0px)) 6px max(16px, env(safe-area-inset-left, 0px)); }
+
+.views { flex: 1 1 auto; min-height: 0; position: relative; }
+.view { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  padding-block: 12px calc(var(--bar) + env(safe-area-inset-bottom, 0px) + 16px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+h3 { font-family: var(--mincho); font-size: 14px; font-weight: 800; letter-spacing: .14em; color: var(--muted); margin: 8px 0 0; }
+.lead { color: var(--muted); font-size: 13px; margin: 0; }
+.bar { display: flex; gap: 6px; align-items: center; }
+.bar .seg { flex: 1; }
+.bar .spacer { flex: 1; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; background: var(--surface2); border-radius: 9px; padding: 3px; }
+.seg button { border: 0; background: none; border-radius: 7px; padding: 6px 2px; font-weight: 700; font-size: 13px; letter-spacing: .04em; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1px var(--line); }
+
+/* 当日の頭：場所・進み具合・次に撮るもの */
+.call { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
+.call-h { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.call-h .lbl { flex: 0 0 auto; font-size: 12px; font-weight: 700; letter-spacing: .12em; color: var(--muted); }
+.call-h .place { flex: 1; min-width: 0; font-weight: 700; font-size: 15px; word-break: keep-all; overflow-wrap: anywhere; }
+.status { flex: 0 0 auto; font-size: 12px; font-weight: 700; color: var(--accent); border: 1px solid var(--gold); border-radius: 3px; padding: 1px 8px; white-space: nowrap; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.stat { border-top: 1px solid var(--line); padding-top: 6px; display: flex; flex-direction: column; gap: 1px; }
+.stat span { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
+.stat b { font-family: var(--mincho); font-weight: 800; font-size: 28px; line-height: 1.1; }
+.stat b small { font-size: 15px; color: var(--muted); margin-left: 1px; }
+.prog-line { height: 4px; border-radius: 2px; background: var(--surface2); overflow: hidden; }
+.prog-line i { display: block; height: 100%; background: var(--gold); }
+.go { width: 100%; min-height: 50px; border: 0; border-radius: 10px; background: var(--deep); color: var(--deep-ink); font-weight: 700; font-size: 15px; letter-spacing: .02em; padding: 8px 14px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.go:disabled { background: var(--ok-bg); color: var(--ok); }
+.go b { font-family: var(--num); color: var(--gold); }
+
+.sec-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.sec-h code { font-family: var(--num); font-size: 12px; color: var(--accent); border: 1px solid var(--gold); border-radius: 3px; padding: 0 5px; }
+.sec-h b { font-family: var(--mincho); font-weight: 800; font-size: 16px; letter-spacing: .03em; }
+.sec-h span { font-family: var(--num); font-size: 12px; color: var(--muted); }
+.mode { font-size: 11px; font-weight: 700; border-radius: 3px; padding: 1px 7px; border: 1px solid var(--line); color: var(--muted); letter-spacing: .06em; }
+.mode.m-原稿 { background: var(--deep); border-color: var(--deep); color: var(--deep-ink); }
+.mode.m-自由 { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.secnote { font-size: 13px; color: var(--muted); border-left: 2px solid var(--line); padding: 2px 0 2px 10px; }
+.secnote b { color: var(--ink); }
+
+.row { position: relative; display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; width: 100%; text-align: left; background: var(--surface);
+  border: 1px solid var(--line); border-radius: var(--r); padding: 11px 12px; }
+.row.must { border-color: var(--gold); }
+.row.done { background: transparent; border-style: dashed; border-color: var(--line); }
+.row.done .what { color: var(--muted); }
+/* 次に撮る：四隅に金の鉤（ファインダーの枠） */
+.row.next { border-color: transparent; border-radius: 2px; padding: 13px 14px;
+  background:
+    linear-gradient(var(--gold), var(--gold)) left top / 16px 2.5px no-repeat, linear-gradient(var(--gold), var(--gold)) left top / 2.5px 16px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) right top / 16px 2.5px no-repeat, linear-gradient(var(--gold), var(--gold)) right top / 2.5px 16px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) left bottom / 16px 2.5px no-repeat, linear-gradient(var(--gold), var(--gold)) left bottom / 2.5px 16px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) right bottom / 16px 2.5px no-repeat, linear-gradient(var(--gold), var(--gold)) right bottom / 2.5px 16px no-repeat,
+    var(--surface); }
+.nextlab { font-size: 12px; font-weight: 700; letter-spacing: .2em; color: var(--accent); }
+.row.flash { animation: flash 1.2s ease-out 1; }
+@keyframes flash { 0% { box-shadow: 0 0 0 6px var(--accent-bg); } 100% { box-shadow: 0 0 0 0 transparent; } }
+.row.off { opacity: .55; }
+.tick { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; background: var(--surface); }
+.row.next .tick { border-color: var(--gold); }
+.row.done .tick { background: var(--ok); border-color: var(--ok); }
+.tick svg { width: 16px; height: 16px; opacity: 0; }
+.row.done .tick svg { opacity: 1; }
+.row input[type=checkbox] { width: 24px; height: 24px; margin: 1px 0 0; accent-color: var(--accent); }
+.body { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.tm { font-family: var(--mincho); font-weight: 800; font-size: 19px; line-height: 1.1; letter-spacing: .02em; }
+.row.done .tm { color: var(--muted); }
+.pill { font-size: 12px; font-weight: 700; color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 0 7px; }
+.tag { font-size: 11px; font-weight: 700; color: var(--accent); letter-spacing: .06em; }
+.tag.field { color: var(--muted); }
+.what { font-size: 15px; font-weight: 700; }
+.note { font-size: 13px; color: var(--muted); }
+.stamp { font-family: var(--num); font-size: 12px; color: var(--ok); }
+.acts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 6px 14px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--surface); font-weight: 700; font-size: 15px; }
+.btn.small { min-height: 38px; padding: 3px 12px; font-size: 13px; }
+.btn.navy { background: var(--deep); border-color: var(--deep); color: var(--deep-ink); }
+.btn.gold { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.ghost { color: var(--muted); background: transparent; }
+.btn.danger { color: var(--rec); border-color: var(--rec); }
+.btn.danger.sure { background: var(--rec); color: var(--rec-ink); }
+.btn[aria-pressed="true"] { background: var(--deep); border-color: var(--deep); color: var(--deep-ink); }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn.wide { width: 100%; }
+
+.q { display: flex; flex-direction: column; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 11px 12px; }
+.q.must { border-color: var(--gold); }
+.q.asking { box-shadow: 0 0 0 3px var(--rec); border-color: transparent; }
+.q.done { background: transparent; border-style: dashed; border-color: var(--line); }
+.q.done .txt { color: var(--muted); }
+.q .qt { display: flex; gap: 10px; align-items: baseline; }
+.q .no { font-family: var(--mincho); font-weight: 800; font-size: 21px; line-height: 1; color: var(--accent); min-width: 1.6em; }
+.q.done .no { color: var(--ok); }
+.q .txt { font-size: 15px; font-weight: 700; min-width: 0; }
+.stars { color: var(--gold); font-weight: 700; }
+
+.log { display: grid; grid-template-columns: 70px 1fr auto; gap: 8px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; font-size: 14px; }
+.log .lt { font-family: var(--num); font-size: 13px; }
+.log .lw { min-width: 0; }
+.log .lw small { display: block; color: var(--muted); font-family: var(--num); font-size: 12px; }
+.log.k-rec { border-left: 4px solid var(--rec); }
+.log.k-stop { border-left: 4px solid var(--muted); }
+.log.k-good, .log.k-mark { border-left: 4px solid var(--gold); }
+.noteIn { margin-top: 4px; width: 100%; min-height: 36px; border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; background: var(--surface); font-size: 14px; }
+
+.chk { display: flex; flex-direction: column; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 11px 12px; }
+.chk.must { border-color: var(--gold); }
+.chk.filled { border-left: 4px solid var(--ok); }
+.chk .ct { font-size: 15px; font-weight: 700; }
+.chk .ct .tag { margin-right: 6px; }
+.chk textarea { width: 100%; min-height: 64px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--bg); padding: 8px 10px; font-size: 16px; resize: vertical; }
+.sum { width: 100%; min-height: 220px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--surface); padding: 8px 10px; font-size: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field span { font-size: 12px; font-weight: 700; letter-spacing: .08em; color: var(--muted); }
+.field input, .field select, .field textarea { width: 100%; min-height: 44px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--bg); padding: 8px 10px; font-size: 16px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.camrow { display: grid; grid-template-columns: 34px 1fr 1fr auto; gap: 8px; align-items: end; }
+.camrow .cid { font-family: var(--mincho); font-weight: 800; font-size: 26px; line-height: 1; color: var(--accent); text-align: center; padding-bottom: 10px; }
+.camwarn { grid-column: 1 / -1; margin: 0; font-size: 13px; font-weight: 700; color: var(--rec); }
+.empty { text-align: center; color: var(--muted); padding: 28px 10px; font-size: 14px; }
+.colorset { border: 0; padding: 0; margin: 0; }
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.swatches label { position: relative; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; border: 1.5px solid var(--line); border-radius: 999px; padding: 4px 10px 4px 5px; }
+.swatches label:has(input:checked) { border-color: var(--ink); }
+.swatches input { position: absolute; opacity: 0; pointer-events: none; }
+.sw { width: 18px; height: 18px; border-radius: 3px; display: inline-block; flex: 0 0 auto; }
+
+/* 番組と回の一覧（上の札を押すと開く） */
+.sheet { position: fixed; inset: 0; z-index: 40; background: var(--scrim); display: flex; align-items: flex-start; justify-content: center;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); }
+.panel { width: 100%; max-width: 560px; max-height: 100%; overflow-y: auto; background: var(--bg) var(--grain); border-radius: 14px; padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.panel-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.panel-h b { font-family: var(--mincho); font-weight: 800; font-size: 18px; letter-spacing: .06em; }
+.pg { display: flex; flex-direction: column; gap: 6px; }
+.pg-h { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.pg-h b { font-family: var(--mincho); font-weight: 800; font-size: 15px; }
+.pg-h small { font-size: 12px; color: var(--muted); }
+.ep-row { display: flex; flex-direction: column; text-align: left; width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 9px 12px; }
+.ep-row b { font-size: 15px; }
+.ep-row small { font-size: 12px; color: var(--muted); }
+.ep-row[aria-current="true"] { border-color: var(--gold); box-shadow: inset 4px 0 0 var(--gold); }
+
+/* 時計（各カメラで2秒撮る） */
+.clockov { position: fixed; inset: 0; z-index: 50; background: var(--deep); color: var(--deep-ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; border: 0; width: 100%;
+  padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(16px, env(safe-area-inset-left, 0px)); }
+.clockov b { font-family: var(--num); font-weight: 700; font-size: clamp(56px, 19vw, 220px); line-height: 1; color: #f0c75a; }
+.clockov small { font-size: 14px; color: var(--deep-mute); max-width: 32em; text-align: center; }
+
+/* 下：藍の録画の帯。今の時刻と、カメラごとの録画 */
+.recbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--deep); color: var(--deep-ink); border-top: 2px solid var(--gold);
+  padding: 6px max(12px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); }
+.recinfo { max-width: 760px; margin: 0 auto 6px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--deep-mute); }
+.clock { font-family: var(--num); font-size: 15px; color: var(--deep-ink); letter-spacing: .02em; }
+.clock small { font-size: 12px; color: var(--deep-mute); }
+.recinfo .lbl { letter-spacing: .1em; }
+.sync { width: 7px; height: 7px; border-radius: 50%; background: #7fcf9b; margin-left: auto; }
+.sync.wait { background: var(--deep-mute); }
+.sync.warn { background: #ff6a57; }
+.recrow { display: grid; grid-template-columns: repeat(var(--cams, 2), 1fr) 64px; gap: 8px; max-width: 760px; width: 100%; margin: 0 auto; }
+.rec { min-height: 68px; border-radius: 12px; border: 1.5px solid var(--deep-line); background: var(--deep2); color: var(--deep-ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; }
+.rec b { display: flex; align-items: center; gap: 7px; font-family: var(--num); font-size: 21px; line-height: 1; letter-spacing: .04em; }
+.rec b i { width: 11px; height: 11px; border-radius: 50%; background: #ff5242; flex: 0 0 auto; }
+.rec small { font-family: var(--num); font-size: 11px; color: var(--deep-mute); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rec.on { background: #d4302a; border-color: #d4302a; color: #ffffff; }
+.rec.on b i { background: #ffffff; animation: blink 1s steps(2, start) infinite; }
+.rec.on small { color: #ffffff; }
+@keyframes blink { to { visibility: hidden; } }
+.mark { min-height: 68px; border-radius: 12px; border: 1.5px solid #e3b64a; background: transparent; color: #e3b64a; font-weight: 700; font-size: 15px; letter-spacing: .1em; }
+#toast { position: fixed; left: 50%; bottom: calc(var(--bar) + env(safe-area-inset-bottom, 0px) + 8px); transform: translateX(-50%); background: var(--ink); color: var(--surface);
+  font-weight: 700; font-size: 14px; padding: 9px 16px; border-radius: 9px; opacity: 0; pointer-events: none; transition: opacity .15s; z-index: 60; max-width: calc(100% - 32px); text-align: center; }
+#toast.show { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div id="app">
+  <header class="top">
+    <button class="plate" id="switchBtn" data-act="sheet" aria-haspopup="dialog" aria-label="番組と回を切り替える">
+      <small id="progName">トレダカ</small>
+      <b><span id="epTitle">トレダカ</span></b>
+      <span class="when" id="epWhen">&#12288;</span>
+    </button>
+    <button class="iconbtn" data-tab="set" aria-label="この回の設定"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="10" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
+  </header>
+  <nav class="tabs" id="tabs">
+    <button data-tab="day">当日<small id="c-day">0/0</small></button>
+    <button data-tab="qs">質問<small id="c-qs">0/0</small></button>
+    <button data-tab="chk">確認<small id="c-chk">0/0</small></button>
+    <button data-tab="log">記録<small id="c-log">0</small></button>
+  </nav>
+  <div class="warn" id="warn" role="alert" hidden></div>
+  <main class="views">
+    <section class="view" id="v-day"></section>
+    <section class="view" id="v-qs" hidden></section>
+    <section class="view" id="v-chk" hidden></section>
+    <section class="view" id="v-log" hidden></section>
+    <section class="view" id="v-set" hidden></section>
+  </main>
+  <div class="recbar"><div class="recinfo"><span class="lbl">いま</span><span class="clock"><span id="clock">--:--</span><small id="clockS">:--</small></span><span class="sync wait" id="sync" role="img" aria-label="接続中" title="接続中"></span></div><div class="recrow" id="recrow"></div></div>
+</div>
+<div class="sheet" id="sheet" hidden></div>
+<button class="clockov" id="clockov" data-act="clockClose" hidden><b id="bigclock">--:--:--</b><small>この画面を各カメラで2秒撮っておくと、あとで時刻の合わせを確かめられます。押すと閉じます</small></button>
+<div id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="importIn" accept="application/json,.json" hidden>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pad = n => String(n).padStart(2, '0');
+const clone = v => JSON.parse(JSON.stringify(v ?? null));
+const TICK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const hm = ms => { const d = new Date(ms); return `${d.getHours()}:${pad(d.getMinutes())}`; };
+const hms = ms => { const d = new Date(ms); return `${d.getHours()}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; };
+const dur = ms => { const s = Math.max(0, Math.round(ms / 1000)); return `${Math.floor(s / 60)}:${pad(s % 60)}`; };
+const hm2min = s => { const m = /^(\d{1,2}):(\d{2})/.exec(s || ''); return m ? +m[1] * 60 + +m[2] : null; };
+const md = iso => iso ? iso.replace(/^\d{4}-0?(\d+)-0?(\d+)$/, '$1/$2') : '';
+const WD = '日月火水木金土';
+const wd = iso => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? WD[new Date(+m[1], +m[2] - 1, +m[3]).getDay()] : ''; };
+function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => el.classList.remove('show'), 1800); }
+function buzz(p) { try { navigator.vibrate && navigator.vibrate(p || 15); } catch (e) {} }
+const LS = { get(k, d) { try { const v = localStorage.getItem('imakaga.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+             set(k, v) { try { localStorage.setItem('imakaga.' + k, JSON.stringify(v)); } catch (e) {} } };
+
+/* ---------- state ---------- */
+// 保存先：programs/<番組>（名前・色・新しい回の雛形）、episodes/<回>（中身。program に番組の id）、episodes/<回>/log・answers
+const DEFAULT_PROG = 'imakaga';
+const PROG_COLORS = [['#d9a11c', '金'], ['#c0502d', '朱'], ['#26385e', '藍'], ['#3f7550', '若竹'], ['#3a3a3c', '墨']];
+const PROG_FALLBACK = { imakaga: '#d9a11c', taishi: '#c0502d' };
+let db = null, canWrite = true, LOCAL = false;   // LOCAL：claude.ai の外（GitHub など）で開き、端末の中に保存している
+let programs = [];            // [{id, name, station, color, order, tmpl}]
+let episodes = [];            // [{id, title, date, status, program}]
+let epId = LS.get('ep', '');
+let EP = null;                // the selected episode body
+let EV = [];                  // events of the selected episode, ordered by at
+let tab = (location.hash.slice(1) || LS.get('tab', 'day'));
+let dayView = LS.get('dayView', 'sec');
+let editing = false;          // 当日・質問の「編集」：使う・使わないを切り替える
+let addOpen = null;           // 'day' | 'qs'：足す欄を開いている画面
+let sheetOpen = false, newEpFor = null, newProg = false;
+let camDel = null;            // 記録のあるカメラを消す前の確かめ
+let unEp = null, unLog = null, unAns = null;
+let ANS = {};                 // answers to the episode's checks: {checkId: {a, at}}
+let sumText = '';             // the copy-out text when the clipboard is refused
+const ansT = {};
+let writing = Promise.resolve();
+
+/* ---------- derived ---------- */
+const checks = () => (EP && Array.isArray(EP.checks) ? EP.checks : []);
+const answered = c => !!String((ANS[c.id] || {}).a || '').trim();
+const items = () => (EP && Array.isArray(EP.items) ? EP.items : []);
+const sections = () => (EP && Array.isArray(EP.sections) ? EP.sections : []);
+const cams = () => (EP && Array.isArray(EP.cams) && EP.cams.length ? EP.cams : [{ id: 'A', name: 'カメラA', prefix: '' }]);
+const used = it => it.use !== false;
+const progOf = e => (e && e.program) || DEFAULT_PROG;
+function programList() {
+  const list = programs.slice();
+  episodes.forEach(e => { const p = progOf(e); if (!list.some(x => x.id === p)) list.push({ id: p, name: p === DEFAULT_PROG ? 'いま、輝いてます。' : p, order: 0 }); });
+  if (!list.length) list.push({ id: DEFAULT_PROG, name: 'いま、輝いてます。', order: 0 });
+  return list.sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+const progById = id => programList().find(p => p.id === id) || { id, name: id };
+const progColor = id => { const p = progById(id); return /^#[0-9a-f]{6}$/i.test(p.color || '') ? p.color : (PROG_FALLBACK[id] || '#d9a11c'); };
+function recState() {   // per camera: {on, clip, since}
+  const st = {};
+  cams().forEach(c => { st[c.id] = { on: false, clip: 0, since: 0 }; });
+  for (const e of EV) {
+    if (!st[e.cam]) continue;
+    if (e.k === 'rec') { st[e.cam].on = true; st[e.cam].clip += 1; st[e.cam].since = e.at; }
+    else if (e.k === 'stop') { st[e.cam].on = false; }
+  }
+  return st;
+}
+function recsNow(at) {   // where in the footage this moment is, for each camera recording now
+  const st = recState(), out = [];
+  for (const c of cams()) { const s = st[c.id]; if (s.on) out.push({ cam: c.id, clip: s.clip, off: Math.round((at - s.since) / 100) / 10 }); }
+  return out;
+}
+const evFor = (k, ref) => EV.filter(e => e.k === k && e.ref === ref);
+function qState(id) {
+  const starts = evFor('q', id), ends = evFor('qend', id), goods = evFor('good', id);
+  const asking = starts.length > ends.length;
+  return { asked: starts.length > 0, asking, done: ends.length > 0 && !asking, n: starts.length, good: goods.length, last: starts[starts.length - 1] };
+}
+const cutsUsed = () => items().filter(it => it.kind !== 'q' && used(it));
+const isDone = it => evFor('cut', it.id).length > 0;
+// 次に撮る：撮影の日なら、時刻が来ていてまだ撮れていない行のうち最後のもの。そうでなければ、撮る時刻の順（時刻の無い行は区間の順で後ろ）でまだ撮れていない最初の行
+function nextItem() {
+  const list = cutsUsed();
+  if (!list.length) return null;
+  if (EP && EP.date) {
+    const d = new Date(), iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    if (iso === EP.date) {
+      const mins = d.getHours() * 60 + d.getMinutes();
+      const due = list.filter(it => !isDone(it) && hm2min(it.time) != null && hm2min(it.time) <= mins).sort((a, b) => hm2min(a.time) - hm2min(b.time));
+      if (due.length) return due[due.length - 1];
+    }
+  }
+  const order = sections().map(s => s.id).concat(['']);
+  const sorted = list.slice().sort((a, b) => ((hm2min(a.time) ?? 1e4) - (hm2min(b.time) ?? 1e4)) || (order.indexOf(a.section || '') - order.indexOf(b.section || '')));
+  return sorted.find(it => !isDone(it)) || null;
+}
+
+/* ---------- writes ---------- */
+function queue(fn) { writing = writing.then(fn).catch(e => { if (e && (e.code === 'invalid_argument' || e.code === 'permission_denied')) { canWrite = false; setSync('この端末からは書き込めません', true); } else setSync('保存できませんでした。通信を確かめてください', true); }); return writing; }
+function writable() { if (!db) { toast('保存先につながっていません'); return false; } if (!canWrite) { toast('閲覧のみです'); return false; } return true; }
+function logEvent(k, extra) {
+  if (!epId) { toast('回を選んでください'); return; }
+  if (!writable()) return;
+  const at = Date.now();
+  const body = Object.assign({ k, at, recs: recsNow(at) }, extra || {});
+  if (k === 'rec' || k === 'stop') delete body.recs;
+  const ref = db.collection(`episodes/${epId}/log`).doc();
+  EV = EV.concat([Object.assign({ id: ref.id, _local: true }, body)]).sort((a, b) => a.at - b.at);
+  render();
+  buzz(k === 'rec' ? [30, 40, 30] : 15);
+  queue(() => ref.set(body));
+}
+function removeEvent(id) { if (!writable()) return; EV = EV.filter(e => e.id !== id); render(); queue(() => db.doc(`episodes/${epId}/log/${id}`).delete()); }
+function noteEvent(id, note) { if (!writable()) return; queue(() => db.doc(`episodes/${epId}/log/${id}`).update({ note })); }
+// 確認事項の答え：episodes/<回>/answers/<確認のid> に {a, at}
+function saveAnswer(id, a) {
+  if (!epId || !writable()) return;
+  const body = { a, at: Date.now() };
+  ANS = Object.assign({}, ANS, { [id]: body });
+  counts();
+  queue(() => db.doc(`episodes/${epId}/answers/${id}`).set(body));
+}
+function saveEp(patch) {
+  if (!EP || !writable()) return;
+  EP = Object.assign({}, EP, patch); render();
+  queue(() => db.doc(`episodes/${epId}`).update(Object.assign({}, patch, { editedAt: Date.now() })));
+}
+const saveItems = next => saveEp({ items: next });
+const saveCams = next => saveEp({ cams: next });
+function nextCamId() { const ids = cams().map(c => c.id); for (let i = 0; i < 26; i++) { const c = String.fromCharCode(65 + i); if (!ids.includes(c)) return c; } return 'Z' + ids.length; }
+function removeCam(id) {
+  const cs = cams();
+  if (cs.length <= 1) { toast('カメラは1台は残します'); return; }
+  if ((recState()[id] || {}).on) { toast(`カメラ${id}の録画を止めてから消してください`); return; }
+  const n = EV.filter(e => e.cam === id).length;
+  if (n && camDel !== id) { camDel = id; render(); return; }
+  camDel = null;
+  saveCams(cs.filter(c => c.id !== id));
+  toast(`カメラ${id}を消しました${n ? '（記録は残ります）' : ''}`);
+}
+function createEpisode(pid, title, date) {
+  if (!writable()) return;
+  const t = progById(pid).tmpl || {};
+  const ref = db.collection('episodes').doc();
+  const body = { program: pid, title, date, status: '準備中', memo: '', call: '', place: '',
+    cams: clone(t.cams && t.cams.length ? t.cams : [{ id: 'A', name: 'カメラA', prefix: '' }]),
+    sections: clone(t.sections || []), items: clone(t.items || []), checks: clone(t.checks || []), createdAt: Date.now() };
+  episodes = episodes.concat([{ id: ref.id, title, date, status: body.status, program: pid }]);
+  queue(() => ref.set(body));
+  newEpFor = null; sheetOpen = false;
+  pick(ref.id);
+  toast('回を作りました');
+}
+function createProgram(name, station, color) {
+  if (!writable()) return;
+  const ref = db.collection('programs').doc();
+  const body = { name, station, color, order: Date.now(), tmpl: { cams: [{ id: 'A', name: 'カメラA', prefix: '' }], sections: [], items: [], checks: [] } };
+  programs = programs.concat([Object.assign({ id: ref.id }, body)]);
+  queue(() => ref.set(body));
+  newProg = false; newEpFor = ref.id;
+  render();
+  toast('番組を足しました。続けて回を作ります');
+}
+
+/* ---------- views ---------- */
+function setSync(t, warn) {
+  const s = $('sync'); s.className = 'sync' + (warn ? ' warn' : ''); s.title = t; s.setAttribute('aria-label', t);
+  $('warn').hidden = !warn; $('warn').textContent = warn ? t : '';
+}
+function header() {
+  const cur = episodes.find(e => e.id === epId);
+  const pid = EP ? progOf(EP) : (cur ? progOf(cur) : DEFAULT_PROG);
+  plateVars(progColor(pid));
+  $('progName').textContent = EP ? progById(pid).name : 'トレダカ';
+  $('epTitle').textContent = EP ? EP.title || '無題の回' : (db ? '回を選んでください' : 'トレダカ');
+  $('epWhen').textContent = EP ? whenLine() : '\u3000';
+}
+// 札の色：番組の色を地にして、字・内枠・角の鉤の色を札の明るさから決める
+const hex2rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const mix = (a, b, t) => '#' + hex2rgb(a).map((v, i) => pad(Math.round(v + (hex2rgb(b)[i] - v) * t).toString(16))).join('');
+function plateVars(c) {
+  if (plateVars.c === c) return; plateVars.c = c;
+  const lum = hex2rgb(c).map(v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }).reduce((s, v, i) => s + v * [.2126, .7152, .0722][i], 0);
+  const light = lum > .3, to = light ? '#000000' : '#ffffff', st = document.documentElement.style;
+  st.setProperty('--plate', c);
+  st.setProperty('--plate-ink', mix(c, to, light ? .72 : .93));
+  st.setProperty('--plate-sub', mix(c, to, light ? .6 : .78));
+  st.setProperty('--plate-mark', mix(c, to, light ? .6 : .72));
+  st.setProperty('--plate-line', mix(c, '#ffffff', light ? .48 : .32));
+}
+// 札の3行目：撮影日と開始を1行で
+function startTime() { return EP.call || (cutsUsed().map(it => it.time).filter(t => hm2min(t) != null).sort((a, b) => hm2min(a) - hm2min(b))[0] || ''); }
+function whenLine() {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(EP.date || ''), s = startTime();
+  return (m ? `${+m[2]}月${+m[3]}日（${wd(EP.date)}）` : '撮影日未定') + (s ? `　${s}〜` : '');
+}
+const KIND = { cut: 'カット', step: '段取り', q: '質問' };
+// 編集中の行：使う・使わないの切り替えと、現場で足した項目を消す
+function editRowHTML(it) {
+  return `<label class="row${used(it) ? '' : ' off'}" for="use-${esc(it.id)}">
+    <input type="checkbox" id="use-${esc(it.id)}" data-use="${esc(it.id)}"${used(it) ? ' checked' : ''}>
+    <span class="body">
+      <span class="meta">${it.no ? `<span class="tm">${esc(it.no)}</span>` : it.time ? `<span class="tm">${esc(it.time)}</span>` : ''}<span class="pill">${KIND[it.kind] || 'カット'}</span>${it.src === 'field' ? '<span class="tag field">現場で追加</span>' : ''}</span>
+      <span class="what">${esc(it.text)}</span>
+      ${it.src === 'field' ? `<span class="acts"><button class="btn small danger" type="button" data-act="delItem" data-id="${esc(it.id)}">消す</button></span>` : ''}
+    </span></label>`;
+}
+function rowHTML(it, nextId) {
+  if (editing) return editRowHTML(it);
+  const done = evFor('cut', it.id);
+  const last = done[done.length - 1];
+  const stamp = last ? `<span class="stamp">撮れた ${hm(last.at)}${(last.recs || []).map(r => ` ${r.cam}#${r.clip}`).join('')}</span>` : '';
+  return `<div class="row${it.must ? ' must' : ''}${last ? ' done' : ''}${nextId === it.id ? ' next' : ''}" role="checkbox" aria-checked="${last ? 'true' : 'false'}" tabindex="0" data-act="cut" data-id="${esc(it.id)}">
+    <span class="tick">${TICK}</span>
+    <span class="body">
+      <span class="meta">${it.time ? `<span class="tm">${esc(it.time)}</span>` : ''}${it.place ? `<span class="pill">${esc(it.place)}</span>` : ''}${it.must ? '<span class="tag">必ず押さえる</span>' : ''}${it.src === 'field' ? '<span class="tag field">現場で追加</span>' : ''}${it.kind === 'step' ? '<span class="pill">段取り</span>' : ''}</span>
+      <span class="what">${esc(it.text)}</span>
+      ${it.note ? `<span class="note">${esc(it.note)}</span>` : ''}
+      ${nextId === it.id ? '<span class="nextlab">次に撮る</span>' : ''}
+      ${stamp}
+      ${last ? `<span class="acts"><button class="btn small ghost" data-act="undo" data-ev="${esc(last.id)}">取り消す</button>${done.length > 1 ? `<span class="note">${done.length}回</span>` : ''}</span>` : ''}
+    </span></div>`;
+}
+// 撮り方（知識/撮り方の区分.md）：原稿／自由／画／定型
+function secHead(sec, count) {
+  const m = sec.mode || '';
+  return `<div class="sec-h">${sec.id ? `<code>${esc(sec.id)}</code>` : ''}<b>${esc(sec.name)}</b>${m ? `<span class="mode m-${esc(m)}">${esc(m)}</span>` : ''}<span>${count}${sec.secs ? `・${dur(sec.secs * 1000)}` : ''}</span></div>` + (editing ? '' : secNote(sec));
+}
+function secNote(sec) {
+  if (sec.mode === '原稿') return '<div class="secnote"><b>原稿</b>：章が変わったら録画を止めて、また録画</div>';
+  if (sec.mode === '自由') return `<div class="secnote"><b>自由</b>${sec.take ? `・撮る${esc(sec.take)}` : ''}${sec.secs ? `・使う${sec.secs}秒` : ''}${sec.start ? `<br>始め「${esc(sec.start)}」` : ''}${sec.end ? `／終わり「${esc(sec.end)}」` : ''}${(sec.points || []).length ? `<br>必ず通る点：${sec.points.map(esc).join('・')}` : ''}</div>`;
+  if (sec.mode === '画') return '<div class="secnote"><b>画</b>：ナレーションと現場の音で見せる</div>';
+  return '';
+}
+function toolbar(where, extra) {
+  return `<div class="bar">${extra || '<span class="spacer"></span>'}
+    <button class="btn small" type="button" data-act="edit" aria-pressed="${editing}">${editing ? '編集を終える' : '編集'}</button>
+    <button class="btn small gold" type="button" data-act="add" data-where="${where}" aria-expanded="${addOpen === where}">＋ 足す</button></div>` + (addOpen === where ? addForm(where) : '');
+}
+function addForm(where) {
+  const secOpts = sections().map(s => `<option value="${esc(s.id)}">${esc(s.name)}</option>`).join('');
+  return `<form class="card" id="addForm" data-where="${where}">
+    <div class="grid2">
+      ${where === 'qs' ? '<input type="hidden" id="addKind" value="q">' : '<label class="field" for="addKind"><span>種類</span><select id="addKind"><option value="cut">カット</option><option value="step">段取り</option></select></label>'}
+      <label class="field" for="addSec"><span>区間</span><select id="addSec">${secOpts}<option value="">区間なし</option></select></label>
+    </div>
+    <label class="field" for="addText"><span>${where === 'qs' ? '質問' : '内容'}</span><input id="addText" required placeholder="${where === 'qs' ? '話の流れで聞いた質問' : '駄菓子を選ぶ手元'}"></label>
+    ${where === 'qs' ? '' : '<div class="grid2"><label class="field" for="addTime"><span>時刻（任意）</span><input id="addTime" inputmode="numeric" placeholder="15:30"></label><label class="field" for="addNote"><span>メモ（任意）</span><input id="addNote"></label></div>'}
+    <div class="grid2"><button class="btn ghost" type="button" data-act="addClose">やめる</button><button class="btn navy" type="submit">足す</button></div>
+  </form>`;
+}
+// 当日の頭の札：撮影日・始まり・進み具合・次に撮るもの
+function callSheet(next) {
+  const cs = cutsUsed(), done = cs.filter(isDone).length;
+  const qs = items().filter(it => it.kind === 'q' && used(it)), asked = qs.filter(it => qState(it.id).asked).length;
+  const clips = EV.filter(e => e.k === 'rec').length;
+  const pct = cs.length ? Math.round(done / cs.length * 100) : 0;
+  return `<section class="call" aria-label="この回の撮影">
+    ${EP.place || EP.status ? `<div class="call-h"><span class="lbl">場所</span><span class="place">${esc(EP.place || '未定')}</span>${EP.status ? `<span class="status">${esc(EP.status)}</span>` : ''}</div>` : ''}
+    <div class="stats">
+      <div class="stat"><span>撮れたカット</span><b>${done}<small>/${cs.length}</small></b></div>
+      <div class="stat"><span>聞いた質問</span><b>${asked}<small>/${qs.length}</small></b></div>
+      <div class="stat"><span>録画</span><b>${clips}<small>本</small></b></div>
+    </div>
+    <div class="prog-line" role="img" aria-label="カットの進み具合 ${pct}%"><i style="width:${pct}%"></i></div>
+    ${next ? `<button class="go" type="button" data-act="goNext">次：<b>${esc(next.section || '')}</b>　${esc(next.text)}</button>` : (cs.length ? '<button class="go" type="button" disabled>カットは全部撮れました</button>' : '')}
+  </section>`;
+}
+function viewDay() {
+  const list = items().filter(it => it.kind !== 'q' && (editing || used(it)));
+  const next = editing ? null : nextItem();
+  const nextId = next ? next.id : null;
+  let body = '';
+  if (!list.length) body = '<p class="empty">この回のカットと段取りはまだありません。「＋ 足す」で足すか、Claude に入れてもらいます。</p>';
+  else if (dayView === 'time') {
+    body = list.slice().sort((a, b) => (hm2min(a.time) ?? 1e4) - (hm2min(b.time) ?? 1e4)).map(it => rowHTML(it, nextId)).join('');
+  } else {
+    body = sections().concat([{ id: '', name: '区間なし' }]).map(sec => {
+      const its = list.filter(it => (it.section || '') === sec.id);
+      if (!its.length) return '';
+      return secHead(sec, `${its.filter(isDone).length}/${its.length}`) + its.map(it => rowHTML(it, nextId)).join('');
+    }).join('');
+  }
+  const seg = `<div class="seg"><button type="button" data-act="dayView" data-v="sec" aria-pressed="${dayView === 'sec'}">区間の順</button><button type="button" data-act="dayView" data-v="time" aria-pressed="${dayView === 'time'}">時刻の順</button></div>`;
+  $('v-day').innerHTML = `<div class="wrap">${editing ? '' : callSheet(next)}${toolbar('day', seg)}${body}</div>`;
+}
+function viewQs() {
+  const qs = items().filter(it => it.kind === 'q' && (editing || used(it)));
+  let body = '';
+  if (!qs.length) body = '<p class="empty">質問はまだありません。</p>';
+  else body = sections().concat([{ id: '', name: '区間なし' }]).map(sec => {
+    const its = qs.filter(it => (it.section || '') === sec.id);
+    if (!its.length) return '';
+    return secHead(sec, `${its.filter(it => qState(it.id).done).length}/${its.length}`) + its.map(it => {
+      if (editing) return editRowHTML(it);
+      const s = qState(it.id);
+      const cls = s.asking ? ' asking' : s.done ? ' done' : '';
+      const btns = s.asking
+        ? `<button class="btn gold" data-act="good" data-id="${esc(it.id)}">★ 良い答え</button><button class="btn navy" data-act="qend" data-id="${esc(it.id)}">終わり</button>`
+        : `<button class="btn${s.asked ? ' ghost' : ' navy'}" data-act="q" data-id="${esc(it.id)}">${s.asked ? 'もう一度聞く' : '聞く'}</button>${s.last ? `<button class="btn small ghost" data-act="undo" data-ev="${esc(s.last.id)}">取り消す</button>` : ''}`;
+      return `<div class="q${it.must ? ' must' : ''}${cls}">
+        <div class="qt"><span class="no">${esc(it.no || '')}</span><span class="txt">${esc(it.text)}</span></div>
+        ${it.note ? `<span class="note">${esc(it.note)}</span>` : ''}
+        ${s.asked ? `<span class="stamp">${s.asking ? '聞いている　' : ''}${hm(s.last.at)}${(s.last.recs || []).map(r => ` ${r.cam}#${r.clip} ${dur(r.off * 1000)}`).join('')}${s.n > 1 ? `　${s.n}回` : ''}${s.good ? `　<span class="stars">${'★'.repeat(Math.min(s.good, 3))}</span>` : ''}</span>` : ''}
+        <div class="acts">${btns}</div></div>`;
+    }).join('');
+  }).join('');
+  $('v-qs').innerHTML = `<div class="wrap">${toolbar('qs')}${body}</div>`;
+}
+function chkText() {
+  const out = [EP ? `${progById(progOf(EP)).name}　${EP.title || ''}` : '', '打ち合わせの確認事項'];
+  let g0 = null;
+  checks().forEach(c => { const g = c.group || 'その他'; if (g !== g0) { out.push('', '■ ' + g); g0 = g; } out.push('・' + c.text, '　→ ' + (String((ANS[c.id] || {}).a || '').trim() || '（未記入）')); });
+  return out.join('\n');
+}
+// 受け渡しのファイル。形は アプリ/撮影帳/移し方.md：{format:'toredaka/1', kind, exportedAt, programs[{id,…}], episodes[{id, episode, log[], answers{}}]}
+const stampNow = () => { const d = new Date(); return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`; };
+const progOut = id => { const p = Object.assign({}, progById(id)); return p; };
+async function saveFile(name, obj) {
+  const data = JSON.stringify(obj, null, 2);
+  if (!LOCAL) {
+    const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+    if (!dl) { toast('この画面では書き出せません'); return; }
+    try { await dl.save({ filename: name, data }); toast('書き出しました'); } catch (err) { if (!err || err.code !== 'declined') toast('書き出せませんでした'); }
+    return;
+  }
+  const file = new File([data], name, { type: 'application/json' });
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); toast('書き出しました'); return; } }
+  catch (err) { if (err && err.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); toast('書き出しました');
+}
+function exportEp() {
+  if (!EP) { toast('回を選んでください'); return; }
+  const out = { format: 'toredaka/1', kind: 'episode', exportedAt: new Date().toISOString(), programs: [progOut(progOf(EP))],
+    episodes: [{ id: epId, episode: EP, log: EV.map(e => { const c = Object.assign({}, e); delete c._local; return c; }), answers: ANS }] };
+  saveFile(`トレダカ_${(EP.title || epId).replace(/[\\/:*?"<>|\s]+/g, '')}_${stampNow()}.json`, out);
+}
+// 全部の控え（端末の中に保存しているときだけ）
+function exportAll() {
+  if (!db || !db.local) return;
+  const all = db.all(), out = { format: 'toredaka/1', kind: 'all', exportedAt: new Date().toISOString(), programs: [], episodes: [] };
+  Object.keys(all).forEach(k => { const m = /^programs\/([^/]+)$/.exec(k); if (m) out.programs.push(Object.assign({ id: m[1] }, all[k])); });
+  Object.keys(all).forEach(k => {
+    const m = /^episodes\/([^/]+)$/.exec(k); if (!m) return;
+    const id = m[1], log = [], answers = {};
+    Object.keys(all).forEach(j => { let x;
+      if ((x = new RegExp('^episodes/' + id + '/log/([^/]+)$').exec(j))) log.push(Object.assign({ id: x[1] }, all[j]));
+      else if ((x = new RegExp('^episodes/' + id + '/answers/([^/]+)$').exec(j))) answers[x[1]] = all[j]; });
+    out.episodes.push({ id, episode: all[k], log: log.sort((a, b) => a.at - b.at), answers });
+  });
+  saveFile(`トレダカ_全部の控え_${stampNow()}.json`, out);
+}
+function importOpen() { const i = $('importIn'); i.value = ''; i.click(); }
+// 読み込む：同じ id の番組・回は入れ替え、押した記録と答えは id ごとに足し合わせる
+async function importFile(f) {
+  let o;
+  try { o = JSON.parse(await f.text()); } catch (e) { toast('読めないファイルです'); return; }
+  if (o && o.format === 'imakaga-satsueicho/2') o = { programs: o.program && o.program.id ? [o.program] : [], episodes: [{ id: o.episodeId, episode: o.episode, log: o.log, answers: o.answers }] };
+  if (!o || !Array.isArray(o.episodes)) { toast('トレダカのファイルではありません'); return; }
+  if (!writable()) return;
+  const w = []; let ne = 0, nl = 0, na = 0;
+  (o.programs || []).forEach(p => { if (!p || !p.id) return; const b = Object.assign({}, p); delete b.id; w.push([`programs/${p.id}`, b]); });
+  o.episodes.forEach(e => {
+    if (!e || !e.id || !e.episode) return;
+    ne++; w.push([`episodes/${e.id}`, e.episode]);
+    (e.log || []).forEach(x => { if (!x || !x.id) return; const b = Object.assign({}, x); delete b.id; delete b._local; w.push([`episodes/${e.id}/log/${x.id}`, b]); nl++; });
+    Object.entries(e.answers || {}).forEach(([k, v]) => { w.push([`episodes/${e.id}/answers/${k}`, v]); na++; });
+  });
+  if (!ne) { toast('回が入っていないファイルです'); return; }
+  try {
+    if (db.local) { w.forEach(([p, b]) => db.put(p, b)); if (!db.commit()) { toast('端末の空きが足りません'); return; } }
+    else for (const [p, b] of w) await db.doc(p).set(b);
+  } catch (e) { toast('読み込めませんでした'); return; }
+  sheetOpen = false;
+  pick(o.episodes.find(e => e && e.id && e.episode).id);
+  toast(`読み込みました（回${ne}・記録${nl}・答え${na}）`);
+}
+function viewChk() {
+  const cs = checks();
+  let body = '';
+  if (!cs.length) body = '<p class="empty">この回の確認事項はまだありません。Claude が入れます。</p>';
+  else {
+    const groups = [];
+    cs.forEach(c => { const g = c.group || 'その他'; if (!groups.includes(g)) groups.push(g); });
+    body = groups.map(g => {
+      const its = cs.filter(c => (c.group || 'その他') === g);
+      return `<div class="sec-h"><b>${esc(g)}</b><span>${its.filter(answered).length}/${its.length}</span></div>` + its.map(c => {
+        const v = ANS[c.id] || {};
+        return `<label class="chk${answered(c) ? ' filled' : ''}${c.must ? ' must' : ''}" for="ans-${esc(c.id)}">
+          <span class="ct">${c.must ? '<span class="tag">必ず</span>' : ''}${esc(c.text)}</span>
+          ${c.note ? `<span class="note">${esc(c.note)}</span>` : ''}
+          <textarea id="ans-${esc(c.id)}" data-ans="${esc(c.id)}" rows="2" placeholder="お答え">${esc(v.a || '')}</textarea>
+          ${v.at ? `<span class="stamp">保存 ${hm(v.at)}</span>` : ''}
+        </label>`;
+      }).join('');
+    }).join('') + `<button class="btn wide" data-act="chkCopy" type="button">答えをまとめてコピー</button>${sumText ? `<textarea class="sum" readonly>${esc(sumText)}</textarea>` : ''}`;
+  }
+  $('v-chk').innerHTML = `<div class="wrap">${body}</div>`;
+}
+const KLABEL = { rec: '録画開始', stop: '録画停止', cut: '撮れた', q: '質問', qend: '答え終わり', good: '★良い答え', mark: '印' };
+function viewLog() {
+  const ev = EV.slice().reverse();
+  const byId = Object.fromEntries(items().map(it => [it.id, it]));
+  $('v-log').innerHTML = `<div class="wrap">
+    ${!ev.length ? '<p class="empty">まだ何も押していません。録画を始めると、ここに新しい順で残ります。</p>' : ev.map(e => {
+      const it = byId[e.ref];
+      const where = e.k === 'rec' || e.k === 'stop' ? `カメラ${e.cam} #${e.clip || ''}` : (e.recs || []).map(r => `${r.cam}#${r.clip} ${dur(r.off * 1000)}`).join('　') || '録画していないとき';
+      return `<div class="log k-${e.k}">
+        <span class="lt">${hms(e.at)}</span>
+        <span class="lw"><b>${KLABEL[e.k] || e.k}</b>${it ? `　${esc(it.no ? it.no + ' ' : '')}${esc(it.text).slice(0, 40)}` : ''}<small>${esc(where)}</small>
+          ${e.k === 'mark' || e.k === 'good' || e.k === 'cut' ? `<input class="noteIn" id="note-${esc(e.id)}" data-ev="${esc(e.id)}" value="${esc(e.note || '')}" placeholder="メモ（あとで）" aria-label="メモ">` : ''}</span>
+        <button class="btn small ghost" data-act="undo" data-ev="${esc(e.id)}">取消</button></div>`;
+    }).join('')}</div>`;
+}
+function viewSet() {
+  const st = recState();
+  $('v-set').innerHTML = `<div class="wrap">
+    <h3>この回</h3>
+    <div class="card">
+      <label class="field" for="epf-title"><span>会社名・取材先</span><input id="epf-title" data-epf="title" value="${esc(EP.title || '')}"></label>
+      <div class="grid2">
+        <label class="field" for="epf-date"><span>撮影日</span><input id="epf-date" type="date" data-epf="date" value="${esc(EP.date || '')}"></label>
+        <label class="field" for="epf-call"><span>開始</span><input id="epf-call" type="time" data-epf="call" value="${esc(EP.call || '')}"></label>
+      </div>
+      <label class="field" for="epf-place"><span>場所</span><input id="epf-place" data-epf="place" value="${esc(EP.place || '')}"></label>
+      <label class="field" for="epf-status"><span>状態</span><input id="epf-status" data-epf="status" value="${esc(EP.status || '')}" placeholder="準備中"></label>
+      ${EP.memo ? `<p class="lead">${esc(EP.memo)}</p>` : ''}
+    </div>
+    <h3>カメラ</h3>
+    <div class="card">
+      ${cams().map((c, i) => {
+        const n = EV.filter(e => e.cam === c.id).length;
+        return `<div class="camrow">
+          <span class="cid">${esc(c.id)}</span>
+          <label class="field" for="camName${i}"><span>名前</span><input id="camName${i}" data-cam="${i}" data-f="name" value="${esc(c.name || '')}" placeholder="FX6"></label>
+          <label class="field" for="camPre${i}"><span>ファイル名の頭</span><input id="camPre${i}" data-cam="${i}" data-f="prefix" value="${esc(c.prefix || '')}" placeholder="FX_"></label>
+          <button class="btn danger${camDel === c.id ? ' sure' : ''}" type="button" data-act="delCam" data-cam-id="${esc(c.id)}"${cams().length <= 1 || (st[c.id] || {}).on ? ' disabled' : ''}>消す</button>
+          ${camDel === c.id ? `<p class="camwarn">カメラ${esc(c.id)}には押した記録が${n}件あります。消しても記録は残ります。消すときは、もう一度「消す」を押します。</p>` : ''}
+        </div>`;
+      }).join('')}
+      <p class="lead">ファイル名の頭を書くと、仮編集でクリップと結びつけます。</p>
+      <button class="btn small" data-act="addCam" type="button">＋ カメラを足す</button>
+    </div>
+    <h3>時刻合わせ</h3>
+    <div class="card"><button class="btn wide" data-act="clockOpen" type="button">時計を大きく出す</button><p class="lead">撮影を始める前に、各カメラでこの時計を2秒撮っておきます。</p></div>
+    <h3>受け渡し</h3>
+    <div class="card">
+      <button class="btn wide navy" data-act="export" type="button">この回を書き出す</button>
+      ${LOCAL ? '<button class="btn wide" data-act="exportAll" type="button">全部を書き出す（控え）</button>' : ''}
+      <button class="btn wide" data-act="importOpen" type="button">読み込む</button>
+      <p class="lead">書き出すと、この回の中身・押した記録・確認事項の答えが1つのファイルになります。撮影の日が終わったら書き出して、Mac へ送ってください。読み込むと、同じ回の中身は入れ替わり、押した記録と答えは足し合わされます。</p>
+      ${LOCAL ? '<p class="lead">記録はこの端末の中にだけあります。</p>' : ''}
+    </div>
+  </div>`;
+}
+function viewSheet() {
+  const list = programList();
+  $('sheet').innerHTML = `<div class="panel" role="dialog" aria-modal="true" aria-labelledby="sheetH">
+    <div class="panel-h"><b id="sheetH">番組と回</b><button class="btn small" type="button" data-act="sheetClose">閉じる</button></div>
+    ${list.map(p => {
+      const eps = episodes.filter(e => progOf(e) === p.id).sort((a, b) => (b.date || '9999').localeCompare(a.date || '9999'));
+      return `<section class="pg" aria-label="${esc(p.name)}">
+        <div class="pg-h"><i class="sw" style="background:${progColor(p.id)}" aria-hidden="true"></i><b>${esc(p.name)}</b>${p.station ? `<small>${esc(p.station)}</small>` : ''}</div>
+        ${eps.map(e => `<button class="ep-row" type="button" data-act="pickEp" data-id="${esc(e.id)}" aria-current="${e.id === epId}"><b>${esc(e.title || '無題の回')}</b><small>${e.date ? md(e.date) + '（' + wd(e.date) + '）撮影' : '撮影日未定'}${e.status ? '　' + esc(e.status) : ''}</small></button>`).join('')}
+        ${newEpFor === p.id ? `<form class="card" id="newEpForm" data-prog="${esc(p.id)}">
+            <label class="field" for="neTitle"><span>会社名・取材先</span><input id="neTitle" required placeholder="株式会社〇〇"></label>
+            <label class="field" for="neDate"><span>撮影日（任意）</span><input id="neDate" type="date"></label>
+            ${p.tmpl && ((p.tmpl.sections || []).length || (p.tmpl.checks || []).length) ? `<p class="lead">この番組の雛形（区間${(p.tmpl.sections || []).length}・項目${(p.tmpl.items || []).length}・確認事項${(p.tmpl.checks || []).length}・カメラ${(p.tmpl.cams || []).length}台）から作ります。</p>` : ''}
+            <div class="grid2"><button class="btn ghost" type="button" data-act="newEpCancel">やめる</button><button class="btn navy" type="submit">回を作る</button></div>
+          </form>` : `<button class="btn small" type="button" data-act="newEp" data-prog="${esc(p.id)}">＋ 回を足す</button>`}
+      </section>`;
+    }).join('')}
+    ${newProg ? `<form class="card" id="newProgForm">
+        <label class="field" for="npName"><span>番組の名前</span><input id="npName" required placeholder="和のまち太子チャンネル"></label>
+        <label class="field" for="npStation"><span>局（任意）</span><input id="npStation"></label>
+        <fieldset class="field colorset"><span>札の色</span><div class="swatches">${PROG_COLORS.map(([c, n], i) => `<label for="npColor${i}"><input type="radio" name="npColor" id="npColor${i}" value="${c}"${i === programList().length % PROG_COLORS.length ? ' checked' : ''}><i class="sw" style="background:${c}"></i>${n}</label>`).join('')}</div></fieldset>
+        <div class="grid2"><button class="btn ghost" type="button" data-act="newProgCancel">やめる</button><button class="btn navy" type="submit">番組を足す</button></div>
+      </form>` : '<button class="btn wide" type="button" data-act="newProg">＋ 番組を足す</button>'}
+    <button class="btn wide ghost" type="button" data-act="importOpen">ファイルを読み込む</button>
+  </div>`;
+}
+function emptyEp() {
+  if (LOCAL && !episodes.length) return '<div class="empty"><p>まだ回がありません。Claude が作った回のファイルを読み込みます。</p><button class="btn gold" type="button" data-act="importOpen">読み込む</button></div>';
+  return `<p class="empty">${!db || epId ? '読み込んでいます。' : '回が選ばれていません。上の題を押して、番組と回を選んでください。'}</p>`;
+}
+function recbar() {
+  const st = recState(), cs = cams();
+  $('recrow').style.setProperty('--cams', cs.length);
+  $('recrow').innerHTML = cs.map(c => {
+    const s = st[c.id];
+    return `<button class="rec${s.on ? ' on' : ''}" data-act="rec" data-cam="${esc(c.id)}" aria-pressed="${s.on}" aria-label="カメラ${esc(c.id)} ${s.on ? '録画を止める' : '録画を始める'}"><b><i aria-hidden="true"></i>${esc(c.id)}${s.on ? ' REC' : ''}</b><small data-run="${esc(c.id)}">${s.on ? dur(Date.now() - s.since) + ' #' + s.clip : (esc(c.name || '') + (s.clip ? ' 次#' + (s.clip + 1) : '') || '&#12288;')}</small></button>`;
+  }).join('') + `<button class="mark" data-act="mark">印</button>`;
+}
+function counts() {
+  const cuts = cutsUsed(), qs = items().filter(it => it.kind === 'q' && used(it));
+  $('c-day').textContent = `${cuts.filter(isDone).length}/${cuts.length}`;
+  $('c-qs').textContent = `${qs.filter(it => qState(it.id).asked).length}/${qs.length}`;
+  $('c-log').textContent = String(EV.length);
+  $('c-chk').textContent = `${checks().filter(answered).length}/${checks().length}`;
+}
+const TABS = ['day', 'qs', 'chk', 'log', 'set'];
+function showTab() {
+  if (!TABS.includes(tab)) tab = 'day';
+  document.querySelectorAll('.view').forEach(v => { v.hidden = v.id !== 'v-' + tab; });
+  document.querySelectorAll('[data-tab]').forEach(b => { if (b.dataset.tab === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+}
+function typingIn(el) { const ae = document.activeElement; return ae && ae.matches && ae.matches('input:not([type=checkbox]):not([type=hidden]):not([type=radio]), textarea, select') && el && el.contains(ae); }
+function render() {
+  header(); counts(); recbar(); showTab();
+  const v = $('v-' + tab);
+  if (!typingIn(v)) {
+    if (!EP) v.innerHTML = `<div class="wrap">${emptyEp()}</div>`;
+    else if (tab === 'day') viewDay(); else if (tab === 'qs') viewQs(); else if (tab === 'chk') viewChk(); else if (tab === 'log') viewLog(); else viewSet();
+  }
+  $('sheet').hidden = !sheetOpen;
+  if (sheetOpen && !typingIn($('sheet'))) viewSheet();
+}
+function goTab(t) { tab = t; LS.set('tab', tab); addOpen = null; camDel = null; render(); $('v-' + tab).scrollTop = 0; }
+
+/* ---------- events ---------- */
+document.addEventListener('click', e => {
+  if (e.target === $('sheet')) { sheetOpen = false; render(); return; }
+  const t = e.target.closest('[data-tab]');
+  if (t) { goTab(t.dataset.tab); return; }
+  const a = e.target.closest('[data-act]');
+  if (!a) return;
+  const act = a.dataset.act, id = a.dataset.id;
+  if (act === 'undo') { e.stopPropagation(); removeEvent(a.dataset.ev); toast('取り消しました'); return; }
+  if (act === 'dayView') { dayView = a.dataset.v; LS.set('dayView', dayView); render(); return; }
+  if (act === 'rec') {
+    const s = recState()[a.dataset.cam];
+    if (s && s.on) { logEvent('stop', { cam: a.dataset.cam, clip: s.clip }); toast(`カメラ${a.dataset.cam} 停止`); }
+    else { logEvent('rec', { cam: a.dataset.cam, clip: (s ? s.clip : 0) + 1 }); toast(`カメラ${a.dataset.cam} 録画 #${(s ? s.clip : 0) + 1}`); wake(); }
+    return;
+  }
+  if (act === 'mark') { logEvent('mark'); toast('印を付けました'); return; }
+  if (act === 'cut') { logEvent('cut', { ref: id }); toast('撮れた'); return; }
+  if (act === 'goNext') { const el = document.querySelector('#v-day .row.next'); if (el) { el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); } return; }
+  if (act === 'q') { logEvent('q', { ref: id }); return; }
+  if (act === 'qend') { logEvent('qend', { ref: id }); return; }
+  if (act === 'good') { logEvent('good', { ref: id }); toast('★'); return; }
+  if (act === 'edit') { editing = !editing; addOpen = null; render(); return; }
+  if (act === 'add') { addOpen = addOpen === a.dataset.where ? null : a.dataset.where; render(); if (addOpen) { const f = $('addText'); if (f) f.focus(); } return; }
+  if (act === 'addClose') { addOpen = null; document.activeElement && document.activeElement.blur(); render(); return; }
+  if (act === 'delItem') { e.preventDefault(); saveItems(items().filter(it => it.id !== id)); toast('消しました'); return; }
+  if (act === 'export') { exportEp(); return; }
+  if (act === 'exportAll') { exportAll(); return; }
+  if (act === 'importOpen') { importOpen(); return; }
+  if (act === 'chkCopy') {
+    const t = chkText();
+    try { navigator.clipboard.writeText(t).then(() => { sumText = ''; toast('コピーしました'); render(); }, () => { sumText = t; render(); toast('下の欄から選んでコピーしてください'); }); }
+    catch (err) { sumText = t; render(); }
+    return;
+  }
+  if (act === 'addCam') { camDel = null; const nid = nextCamId(); saveCams(cams().concat([{ id: nid, name: '', prefix: '' }])); toast(`カメラ${nid}を足しました`); return; }
+  if (act === 'delCam') { removeCam(a.dataset.camId); return; }
+  if (act === 'clockOpen') { $('clockov').hidden = false; tickClock(); wake(); return; }
+  if (act === 'clockClose') { $('clockov').hidden = true; return; }
+  if (act === 'sheet') { sheetOpen = true; newEpFor = null; newProg = false; render(); return; }
+  if (act === 'sheetClose') { sheetOpen = false; render(); $('switchBtn').focus(); return; }
+  if (act === 'pickEp') { sheetOpen = false; if (id !== epId) pick(id); else render(); return; }
+  if (act === 'newEp') { newEpFor = a.dataset.prog; newProg = false; render(); const f = $('neTitle'); if (f) f.focus(); return; }
+  if (act === 'newEpCancel') { newEpFor = null; document.activeElement && document.activeElement.blur(); render(); return; }
+  if (act === 'newProg') { newProg = true; newEpFor = null; render(); const f = $('npName'); if (f) f.focus(); return; }
+  if (act === 'newProgCancel') { newProg = false; document.activeElement && document.activeElement.blur(); render(); return; }
+});
+document.addEventListener('keydown', e => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.row[data-act]')) { e.preventDefault(); e.target.click(); return; }
+  if (e.key === 'Escape') { if (!$('clockov').hidden) $('clockov').hidden = true; else if (sheetOpen) { sheetOpen = false; render(); $('switchBtn').focus(); } }
+});
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (el.id === 'importIn') { if (el.files && el.files[0]) importFile(el.files[0]); return; }
+  if (el.dataset.use) { saveItems(items().map(it => it.id === el.dataset.use ? Object.assign({}, it, { use: el.checked }) : it)); return; }
+  if (el.dataset.cam != null && el.dataset.f) { const cs = cams().map((c, i) => i === +el.dataset.cam ? Object.assign({}, c, { [el.dataset.f]: el.value.trim() }) : c); saveCams(cs); toast('保存しました'); return; }
+  if (el.dataset.epf) { const v = el.value.trim(); if ((EP[el.dataset.epf] || '') !== v) { saveEp({ [el.dataset.epf]: v }); toast('保存しました'); } return; }
+  if (el.dataset.ans) { const id = el.dataset.ans; clearTimeout(ansT[id]); if (((ANS[id] || {}).a || '') !== el.value) { saveAnswer(id, el.value); toast('保存しました'); } return; }
+  if (el.classList.contains('noteIn')) { noteEvent(el.dataset.ev, el.value); toast('メモを残しました'); }
+});
+document.addEventListener('input', e => {
+  const el = e.target;
+  if (!el.dataset || !el.dataset.ans) return;
+  const id = el.dataset.ans;
+  clearTimeout(ansT[id]);
+  ansT[id] = setTimeout(() => { if (((ANS[id] || {}).a || '') !== el.value) saveAnswer(id, el.value); }, 1200);
+});
+document.addEventListener('submit', e => {
+  e.preventDefault();
+  const f = e.target;
+  if (f.id === 'addForm') {
+    const text = $('addText').value.trim(); if (!text) return;
+    const kind = $('addKind').value;
+    const it = { id: 'f' + Date.now().toString(36), kind, section: $('addSec').value, text, time: $('addTime') ? $('addTime').value.trim() : '', note: $('addNote') ? $('addNote').value.trim() : '', src: 'field', use: true };
+    if (kind === 'q') it.no = '追';
+    addOpen = null; document.activeElement && document.activeElement.blur();
+    saveItems(items().concat([it]));
+    toast('足しました');
+  } else if (f.id === 'newEpForm') {
+    const title = $('neTitle').value.trim(); if (!title) return;
+    document.activeElement && document.activeElement.blur();
+    createEpisode(f.dataset.prog, title, $('neDate').value);
+  } else if (f.id === 'newProgForm') {
+    const name = $('npName').value.trim(); if (!name) return;
+    const c = f.querySelector('input[name=npColor]:checked');
+    document.activeElement && document.activeElement.blur();
+    createProgram(name, $('npStation').value.trim(), c ? c.value : PROG_COLORS[0][0]);
+  }
+});
+window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (TABS.includes(h)) goTab(h); });
+
+let lock = null;
+async function wake() { try { if (navigator.wakeLock && !lock) { lock = await navigator.wakeLock.request('screen'); lock.addEventListener('release', () => { lock = null; }); } } catch (e) {} }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Object.values(recState()).some(s => s.on)) wake(); });
+
+function tickClock() {
+  const d = new Date();
+  $('clock').textContent = `${d.getHours()}:${pad(d.getMinutes())}`;
+  $('clockS').textContent = `:${pad(d.getSeconds())}`;
+  if (!$('clockov').hidden) $('bigclock').textContent = `${d.getHours()}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  const st = recState();
+  document.querySelectorAll('[data-run]').forEach(el => { const s = st[el.dataset.run]; if (s && s.on) el.textContent = dur(Date.now() - s.since) + ' #' + s.clip; });
+}
+setInterval(tickClock, 250);
+setInterval(() => { if (tab === 'day' && !editing && !typingIn($('v-day'))) render(); }, 60000);
+
+/* ---------- store ---------- */
+function pick(id) {
+  epId = id; LS.set('ep', id); EP = null; EV = []; ANS = {}; sumText = ''; editing = false; addOpen = null; camDel = null;
+  if (unEp) unEp(); if (unLog) unLog(); if (unAns) unAns(); unEp = unLog = unAns = null;
+  render();
+  if (!db || !id) return;
+  unEp = db.doc(`episodes/${id}`).onSnapshot(s => { EP = s.exists ? s.data() : null; render(); }, () => setSync('回が読めませんでした', true));
+  unLog = db.collection(`episodes/${id}/log`).orderBy('at').onSnapshot(s => {
+    const local = EV.filter(e => e._local && !s.docs.some(d => d.id === e.id));
+    EV = s.docs.filter(d => d.exists).map(d => Object.assign({ id: d.id }, d.data())).concat(local).sort((a, b) => a.at - b.at);
+    render();
+  }, () => setSync('記録が読めませんでした', true));
+  unAns = db.collection(`episodes/${id}/answers`).onSnapshot(s => {
+    const m = {};
+    s.docs.filter(d => d.exists).forEach(d => { m[d.id] = d.data(); });
+    ANS = m; render();
+  }, () => setSync('確認事項の答えが読めませんでした', true));
+}
+render();
+tickClock();
+/* ---------- 端末の中の保存先（claude.ai の外で開いたとき） ---------- */
+// claude.ai の保存先と同じ呼び方（collection・doc・onSnapshot・set・update・delete）で、localStorage に置く
+function localDb() {
+  const KEY = 'toredaka.store';
+  let store = {};
+  try { store = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { store = {}; }
+  const subs = new Set();
+  const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); return true; } catch (e) { return false; } };
+  const fire = () => setTimeout(() => subs.forEach(f => f()), 0);
+  const snap = path => ({ id: path.split('/').pop(), exists: path in store, data: () => clone(store[path]) });
+  const write = fn => { fn(); if (!persist()) return Promise.reject({ code: 'storage_full' }); fire(); return Promise.resolve(); };
+  const rid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  function doc(path) {
+    return { id: path.split('/').pop(),
+      onSnapshot(cb) { const f = () => cb(snap(path)); subs.add(f); setTimeout(f, 0); return () => subs.delete(f); },
+      set(b) { return write(() => { store[path] = clone(b); }); },
+      update(b) { return write(() => { store[path] = Object.assign({}, store[path], clone(b)); }); },
+      delete() { return write(() => { delete store[path]; }); } };
+  }
+  function collection(col) {
+    const kids = () => Object.keys(store).filter(k => k.startsWith(col + '/') && !k.slice(col.length + 1).includes('/'));
+    const q = { orderBy(field) { q.o = field; return q; },
+      doc(id) { return doc(col + '/' + (id || rid())); },
+      onSnapshot(cb) { const f = () => { const docs = kids().map(snap); if (q.o) docs.sort((a, b) => (a.data()[q.o] || 0) - (b.data()[q.o] || 0)); cb({ docs }); }; subs.add(f); setTimeout(f, 0); return () => subs.delete(f); } };
+    return q;
+  }
+  return { doc, collection, local: true, all: () => clone(store), put: (path, body) => { store[path] = clone(body); }, commit: () => { if (!persist()) return false; fire(); return true; } };
+}
+function listen(timer) {
+  db.collection('programs').onSnapshot(s => {
+    programs = s.docs.filter(x => x.exists).map(x => Object.assign({ id: x.id }, x.data()));
+    render();
+  }, () => setSync('番組の一覧が読めませんでした', true));
+  db.collection('episodes').onSnapshot(s => {
+    clearTimeout(timer);
+    episodes = s.docs.filter(x => x.exists).map(x => { const b = x.data(); return { id: x.id, title: b.title, date: b.date, status: b.status, program: b.program }; });
+    setSync(LOCAL ? 'この端末に保存' : canWrite ? '保存・同期中' : '閲覧のみ', !LOCAL && !canWrite);
+    if (!epId || !episodes.some(e => e.id === epId)) { if (episodes.length) pick(episodes.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0].id); else render(); }
+    else render();
+  }, () => { clearTimeout(timer); setSync('保存先が止まりました。開き直してください', true); });
+  if (epId) pick(epId);
+}
+(async () => {
+  const c = window.claude;
+  if (!c || !c.use) {   // claude.ai の外：端末の中に保存する
+    db = localDb(); LOCAL = true;
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
+    listen(0); render(); return;
+  }
+  const timer = setTimeout(() => setSync('保存先の返事がありません。電波を確かめてください', true), 10000);
+  const [d, user] = await Promise.all([c.use('db'), c.use('user')]);
+  if (!d) { clearTimeout(timer); setSync('保存先につながりません（サインインしてください）', true); return; }
+  db = d;
+  if (user && user.can) { try { if ((await user.can('data.write')) === false) canWrite = false; } catch (e) {} }
+  listen(timer);
+})();
+})();
+</script>
+
+</body></html>
