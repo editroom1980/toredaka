@@ -1,5 +1,5 @@
 // トレダカ：電波が無くても開けるように、画面の一式を端末に置く。画面は通信できるときは新しいものを取り、できないときは置いたものを使う
-const V = 'toredaka-20261104233743';
+const V = 'toredaka-20261105000602';
 const CORE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== V).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

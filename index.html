@@ -328,6 +328,7 @@ let dayView = LS.get('dayView', 'sec');
 let editing = false;          // 当日・質問の「編集」：使う・使わないを切り替える
 let addOpen = null;           // 'day' | 'qs'：足す欄を開いている画面
 let sheetOpen = false, newEpFor = null, newProg = false;
+let pasteMode = null, pasteOut = '';   // 'in'：貼り付けて読み込む／'out'：自動でコピーできなかったときに選んでコピーする
 let camDel = null;            // 記録のあるカメラを消す前の確かめ
 let unEp = null, unLog = null, unAns = null;
 let ANS = {};                 // answers to the episode's checks: {checkId: {a, at}}
@@ -626,11 +627,18 @@ async function saveFile(name, obj) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); toast('書き出しました');
 }
+const epBundle = () => ({ format: 'toredaka/1', kind: 'episode', exportedAt: new Date().toISOString(), programs: [progOut(progOf(EP))],
+  episodes: [{ id: epId, episode: EP, log: EV.map(e => { const c = Object.assign({}, e); delete c._local; return c; }), answers: ANS }] });
 function exportEp() {
   if (!EP) { toast('回を選んでください'); return; }
-  const out = { format: 'toredaka/1', kind: 'episode', exportedAt: new Date().toISOString(), programs: [progOut(progOf(EP))],
-    episodes: [{ id: epId, episode: EP, log: EV.map(e => { const c = Object.assign({}, e); delete c._local; return c; }), answers: ANS }] };
-  saveFile(`トレダカ_${(EP.title || epId).replace(/[\\/:*?"<>|\s]+/g, '')}_${stampNow()}.json`, out);
+  saveFile(`トレダカ_${(EP.title || epId).replace(/[\\/:*?"<>|\s]+/g, '')}_${stampNow()}.json`, epBundle());
+}
+// この回をコピー：同じ Apple ID の Mac で貼り付けられる（ファイルを送らずに済む）
+function copyEp() {
+  if (!EP) { toast('回を選んでください'); return; }
+  const t = JSON.stringify(epBundle());
+  const fail = () => { pasteOut = t; pasteMode = 'out'; render(); };
+  try { navigator.clipboard.writeText(t).then(() => toast('コピーしました。Mac で受け取ります'), fail); } catch (e) { fail(); }
 }
 // 全部の控え（端末の中に保存しているときだけ）
 function exportAll() {
@@ -649,12 +657,13 @@ function exportAll() {
 }
 function importOpen() { const i = $('importIn'); i.value = ''; i.click(); }
 // 読み込む：同じ id の番組・回は入れ替え、押した記録と答えは id ごとに足し合わせる
-async function importFile(f) {
+async function importFile(f) { importText(await f.text()); }
+async function importText(text) {
   let o;
-  try { o = JSON.parse(await f.text()); } catch (e) { toast('読めないファイルです'); return; }
+  try { o = JSON.parse(String(text || '').trim()); } catch (e) { toast('トレダカの中身として読めませんでした'); return false; }
   if (o && o.format === 'imakaga-satsueicho/2') o = { programs: o.program && o.program.id ? [o.program] : [], episodes: [{ id: o.episodeId, episode: o.episode, log: o.log, answers: o.answers }] };
-  if (!o || !Array.isArray(o.episodes)) { toast('トレダカのファイルではありません'); return; }
-  if (!writable()) return;
+  if (!o || !Array.isArray(o.episodes)) { toast('トレダカの中身ではありません'); return false; }
+  if (!writable()) return false;
   const w = []; let ne = 0, nl = 0, na = 0;
   (o.programs || []).forEach(p => { if (!p || !p.id) return; const b = Object.assign({}, p); delete b.id; w.push([`programs/${p.id}`, b]); });
   o.episodes.forEach(e => {
@@ -663,14 +672,28 @@ async function importFile(f) {
     (e.log || []).forEach(x => { if (!x || !x.id) return; const b = Object.assign({}, x); delete b.id; delete b._local; w.push([`episodes/${e.id}/log/${x.id}`, b]); nl++; });
     Object.entries(e.answers || {}).forEach(([k, v]) => { w.push([`episodes/${e.id}/answers/${k}`, v]); na++; });
   });
-  if (!ne) { toast('回が入っていないファイルです'); return; }
+  if (!ne) { toast('回が入っていません'); return false; }
   try {
-    if (db.local) { w.forEach(([p, b]) => db.put(p, b)); if (!db.commit()) { toast('端末の空きが足りません'); return; } }
+    if (db.local) { w.forEach(([p, b]) => db.put(p, b)); if (!db.commit()) { toast('端末の空きが足りません'); return false; } }
     else for (const [p, b] of w) await db.doc(p).set(b);
-  } catch (e) { toast('読み込めませんでした'); return; }
-  sheetOpen = false;
+  } catch (e) { toast('読み込めませんでした'); return false; }
+  sheetOpen = false; pasteMode = null; document.activeElement && document.activeElement.blur();
   pick(o.episodes.find(e => e && e.id && e.episode).id);
   toast(`読み込みました（回${ne}・記録${nl}・答え${na}）`);
+  return true;
+}
+function viewPaste() {
+  $('sheet').innerHTML = pasteMode === 'out'
+    ? `<div class="panel" role="dialog" aria-modal="true" aria-labelledby="pasteH">
+        <div class="panel-h"><b id="pasteH">この回をコピー</b><button class="btn small" type="button" data-act="pasteClose">閉じる</button></div>
+        <p class="lead">自動ではコピーできませんでした。下の欄を長押しして「すべてを選択」→「コピー」を押してください。</p>
+        <textarea class="sum" id="pasteOutText" readonly>${esc(pasteOut)}</textarea></div>`
+    : `<div class="panel" role="dialog" aria-modal="true" aria-labelledby="pasteH">
+        <div class="panel-h"><b id="pasteH">貼り付けて読み込む</b><button class="btn small" type="button" data-act="pasteClose">閉じる</button></div>
+        <p class="lead">Mac でコピーした回の中身を、下の欄に貼り付けて「読み込む」を押します。欄を長押しすると「ペースト」が出ます。</p>
+        <button class="btn wide" type="button" data-act="pasteRead">クリップボードから貼る</button>
+        <textarea class="sum" id="pasteIn" placeholder="ここに貼り付け" aria-label="貼り付ける欄"></textarea>
+        <div class="grid2"><button class="btn ghost" type="button" data-act="pasteClose">やめる</button><button class="btn navy" type="button" data-act="pasteDo">読み込む</button></div></div>`;
 }
 function viewChk() {
   const cs = checks();
@@ -744,8 +767,10 @@ function viewSet() {
     <div class="card">
       <button class="btn wide navy" data-act="export" type="button">この回を書き出す</button>
       ${LOCAL ? '<button class="btn wide" data-act="exportAll" type="button">全部を書き出す（控え）</button>' : ''}
-      <button class="btn wide" data-act="importOpen" type="button">読み込む</button>
-      <p class="lead">書き出すと、この回の中身・押した記録・確認事項の答えが1つのファイルになります。撮影の日が終わったら書き出して、Mac へ送ってください。読み込むと、同じ回の中身は入れ替わり、押した記録と答えは足し合わされます。</p>
+      <button class="btn wide" data-act="copyEp" type="button">この回をコピー</button>
+      <button class="btn wide" data-act="pasteOpen" type="button">貼り付けて読み込む</button>
+      <button class="btn wide ghost" data-act="importOpen" type="button">ファイルを読み込む</button>
+      <p class="lead">撮影の日が終わったら「この回をコピー」を押してください。同じ Apple ID の Mac で、そのまま受け取れます。中身・押した記録・確認事項の答えがまとめて入ります。読み込むと、同じ回の中身は入れ替わり、押した記録と答えは足し合わされます。</p>
       ${LOCAL ? '<p class="lead">記録はこの端末の中にだけあります。</p>' : ''}
     </div>
   </div>`;
@@ -773,11 +798,11 @@ function viewSheet() {
         <fieldset class="field colorset"><span>札の色</span><div class="swatches">${PROG_COLORS.map(([c, n], i) => `<label for="npColor${i}"><input type="radio" name="npColor" id="npColor${i}" value="${c}"${i === programList().length % PROG_COLORS.length ? ' checked' : ''}><i class="sw" style="background:${c}"></i>${n}</label>`).join('')}</div></fieldset>
         <div class="grid2"><button class="btn ghost" type="button" data-act="newProgCancel">やめる</button><button class="btn navy" type="submit">番組を足す</button></div>
       </form>` : '<button class="btn wide" type="button" data-act="newProg">＋ 番組を足す</button>'}
-    <button class="btn wide ghost" type="button" data-act="importOpen">ファイルを読み込む</button>
+    <button class="btn wide ghost" type="button" data-act="pasteOpen">貼り付けて読み込む</button>
   </div>`;
 }
 function emptyEp() {
-  if (LOCAL && !episodes.length) return '<div class="empty"><p>まだ回がありません。Claude が作った回のファイルを読み込みます。</p><button class="btn gold" type="button" data-act="importOpen">読み込む</button></div>';
+  if (LOCAL && !episodes.length) return '<div class="empty"><p>まだ回がありません。Mac でコピーした回の中身を貼り付けて読み込みます。</p><div class="acts" style="justify-content:center"><button class="btn gold" type="button" data-act="pasteOpen">貼り付けて読み込む</button><button class="btn ghost" type="button" data-act="importOpen">ファイルから</button></div></div>';
   return `<p class="empty">${!db || epId ? '読み込んでいます。' : '回が選ばれていません。上の題を押して、番組と回を選んでください。'}</p>`;
 }
 function recbar() {
@@ -809,14 +834,15 @@ function render() {
     if (!EP) v.innerHTML = `<div class="wrap">${emptyEp()}</div>`;
     else if (tab === 'day') viewDay(); else if (tab === 'qs') viewQs(); else if (tab === 'chk') viewChk(); else if (tab === 'log') viewLog(); else viewSet();
   }
-  $('sheet').hidden = !sheetOpen;
-  if (sheetOpen && !typingIn($('sheet'))) viewSheet();
+  $('sheet').hidden = !(sheetOpen || pasteMode);
+  if (pasteMode) { if (!typingIn($('sheet'))) viewPaste(); }
+  else if (sheetOpen && !typingIn($('sheet'))) viewSheet();
 }
 function goTab(t) { tab = t; LS.set('tab', tab); addOpen = null; camDel = null; render(); $('v-' + tab).scrollTop = 0; }
 
 /* ---------- events ---------- */
 document.addEventListener('click', e => {
-  if (e.target === $('sheet')) { sheetOpen = false; render(); return; }
+  if (e.target === $('sheet')) { sheetOpen = false; pasteMode = null; render(); return; }
   const t = e.target.closest('[data-tab]');
   if (t) { goTab(t.dataset.tab); return; }
   const a = e.target.closest('[data-act]');
@@ -843,6 +869,11 @@ document.addEventListener('click', e => {
   if (act === 'export') { exportEp(); return; }
   if (act === 'exportAll') { exportAll(); return; }
   if (act === 'importOpen') { importOpen(); return; }
+  if (act === 'copyEp') { copyEp(); return; }
+  if (act === 'pasteOpen') { sheetOpen = false; pasteMode = 'in'; render(); return; }
+  if (act === 'pasteClose') { pasteMode = null; document.activeElement && document.activeElement.blur(); render(); return; }
+  if (act === 'pasteRead') { try { navigator.clipboard.readText().then(t => { $('pasteIn').value = t; toast('貼りました。「読み込む」を押してください'); }, () => { $('pasteIn').focus(); toast('欄を長押しして「ペースト」を押してください'); }); } catch (err) { $('pasteIn').focus(); } return; }
+  if (act === 'pasteDo') { const t = $('pasteIn').value; if (!t.trim()) { toast('まだ何も貼られていません'); return; } importText(t); return; }
   if (act === 'chkCopy') {
     const t = chkText();
     try { navigator.clipboard.writeText(t).then(() => { sumText = ''; toast('コピーしました'); render(); }, () => { sumText = t; render(); toast('下の欄から選んでコピーしてください'); }); }
