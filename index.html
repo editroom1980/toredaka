@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="トレダカ">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<script>window.TOREDAKA_BUILD = "20261105025740";</script>
+<script>window.TOREDAKA_BUILD = "20261105030609";</script>
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 </head><body>
 <title>トレダカ</title>
@@ -373,7 +373,7 @@ function ivState(secId) {
   const st = qsOf(secId).map(q => qState(q.id));
   return { n: st.length, asked: st.filter(x => x.asked).length, asking: st.some(x => x.asking), good: st.reduce((t, x) => t + x.good, 0), done: st.length > 0 && st.every(x => x.asked && !x.asking) };
 }
-const isDone = it => it.kind === 'iv' ? ivState(it.section).done : evFor('cut', it.id).length > 0;
+const isDone = it => evFor('cut', it.id).length > 0;
 // 次に撮る：撮影の日なら、時刻が来ていてまだ撮れていない行のうち最後のもの。そうでなければ、撮る時刻の順（時刻の無い行は区間の順で後ろ）でまだ撮れていない最初の行
 function nextItem() {
   const list = cutsUsed().concat(ivRows());
@@ -490,14 +490,16 @@ function editRowHTML(it) {
 }
 function ivRowHTML(it, nextId) {
   const s = ivState(it.section);
-  return `<div class="row iv${s.done ? ' done' : ''}${s.asking ? ' asking' : ''}${nextId === it.id ? ' next' : ''}" role="button" tabindex="0" data-act="goQs" data-sec="${esc(it.section)}" aria-label="${esc(it.text)}　質問のタブへ">
+  const last = evFor('cut', it.id).pop();
+  return `<div class="row iv${last ? ' done' : ''}${s.asking ? ' asking' : ''}${nextId === it.id ? ' next' : ''}" role="checkbox" aria-checked="${last ? 'true' : 'false'}" tabindex="0" data-act="cut" data-id="${esc(it.id)}">
     <span class="tick">${TICK}</span>
     <span class="body">
       <span class="meta">${it.time ? `<span class="tm">${esc(it.time)}</span>` : ''}<span class="pill">インタビュー</span>${s.asking ? '<span class="tag">聞いている</span>' : ''}</span>
       <span class="what">${esc(it.text)}</span>
       <span class="ivcount">聞いた質問<b>${s.asked}</b>/${s.n}${s.good ? `　<span class="stars">${'★'.repeat(Math.min(s.good, 3))}</span>` : ''}</span>
       ${nextId === it.id ? '<span class="nextlab">次に撮る</span>' : ''}
-      <span class="note">押すと、質問のタブのこの区間へ</span>
+      ${last ? `<span class="stamp">撮り終えた ${hms(last.at)}</span>` : ''}
+      <span class="acts"><button class="btn small ghost" type="button" data-act="goQs" data-sec="${esc(it.section)}">質問</button>${last ? `<button class="btn small ghost" type="button" data-act="undo" data-ev="${esc(last.id)}">取り消す</button>` : ''}</span>
     </span></div>`;
 }
 function rowHTML(it, nextId) {
@@ -505,9 +507,8 @@ function rowHTML(it, nextId) {
   if (editing) return editRowHTML(it);
   const done = evFor('cut', it.id);
   const last = done[done.length - 1];
-  // 押した 1 回が 1 本のファイル（仮編集の道具が、押した時刻に録画していた／直前に止めたファイルに結ぶ）
-  const hm = t => hms(t).slice(0, -3);
-  const stamp = last ? `<span class="stamp">${done.length > 1 ? `撮れた ${done.length}本　${done.slice(-4).map(e => hm(e.at)).join('・')}` : `撮れた ${hms(last.at)}`}</span>` : '';
+  // 項目ごとに 1 回。前のチェックからこのチェックまでに録画を始めたファイルが、全部この項目になる（検査/撮影帳から仮編集.js）
+  const stamp = last ? `<span class="stamp">撮り終えた ${hms(last.at)}</span>` : '';
   return `<div class="row${it.must ? ' must' : ''}${last ? ' done' : ''}${nextId === it.id ? ' next' : ''}" role="checkbox" aria-checked="${last ? 'true' : 'false'}" tabindex="0" data-act="cut" data-id="${esc(it.id)}">
     <span class="tick">${TICK}</span>
     <span class="body">
@@ -516,7 +517,7 @@ function rowHTML(it, nextId) {
       ${it.note ? `<span class="note">${esc(it.note)}</span>` : ''}
       ${nextId === it.id ? '<span class="nextlab">次に撮る</span>' : ''}
       ${stamp}
-      ${last ? `<span class="acts"><button class="btn small ghost" data-act="undo" data-ev="${esc(last.id)}">${done.length > 1 ? `${done.length}本目を取り消す` : '取り消す'}</button></span>` : ''}
+      ${last ? `<span class="acts"><button class="btn small ghost" data-act="undo" data-ev="${esc(last.id)}">取り消す</button></span>` : ''}
     </span></div>`;
 }
 // 撮り方（知識/撮り方の区分.md）：原稿／自由／画／定型
@@ -838,7 +839,7 @@ document.addEventListener('click', e => {
   if (act === 'dayView') { dayView = a.dataset.v; LS.set('dayView2', dayView); render(); return; }
   if (act === 'mark') { logEvent('mark'); toast('印を付けました'); return; }
   if (act === 'goodNow') { const q = askingQ(); logEvent('good', q ? { ref: q.id } : {}); toast(q ? `★ 質問${q.no || ''}` : '★'); return; }
-  if (act === 'cut') { const n = evFor('cut', id).length + 1; logEvent('cut', { ref: id }); toast(n > 1 ? `撮れた　${n}本目` : '撮れた'); return; }
+  if (act === 'cut') { if (evFor('cut', id).length) { toast('撮り終えた印は付いています'); return; } logEvent('cut', { ref: id }); toast('撮り終えた'); return; }
   if (act === 'goNext') { const el = document.querySelector('#v-day .row.next'); if (el) { el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); } return; }
   if (act === 'q') { logEvent('q', { ref: id }); return; }
   if (act === 'qend') { logEvent('qend', { ref: id }); return; }
