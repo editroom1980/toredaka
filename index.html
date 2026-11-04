@@ -7,6 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="トレダカ">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>window.TOREDAKA_BUILD = "20261105001144";</script>
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 </head><body>
 <title>トレダカ</title>
@@ -771,7 +772,7 @@ function viewSet() {
       <button class="btn wide" data-act="pasteOpen" type="button">貼り付けて読み込む</button>
       <button class="btn wide ghost" data-act="importOpen" type="button">ファイルを読み込む</button>
       <p class="lead">撮影の日が終わったら「この回をコピー」を押してください。同じ Apple ID の Mac で、そのまま受け取れます。中身・押した記録・確認事項の答えがまとめて入ります。読み込むと、同じ回の中身は入れ替わり、押した記録と答えは足し合わされます。</p>
-      ${LOCAL ? '<p class="lead">記録はこの端末の中にだけあります。</p>' : ''}
+      ${LOCAL ? `<p class="lead">記録はこの端末の中にだけあります。</p>${verTag()}` : ''}
     </div>
   </div>`;
 }
@@ -801,8 +802,10 @@ function viewSheet() {
     <button class="btn wide ghost" type="button" data-act="pasteOpen">貼り付けて読み込む</button>
   </div>`;
 }
+// 版の印（GitHub 版だけ。組み立てた日時）：どの版が出ているかを画面で確かめる
+const verTag = () => window.TOREDAKA_BUILD && !/^__/.test(window.TOREDAKA_BUILD) ? `<p class="lead" style="font-family:var(--num);font-size:11px">版 ${esc(window.TOREDAKA_BUILD.replace(/^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2}).*/, '$1-$2-$3 $4:$5'))}</p>` : '';
 function emptyEp() {
-  if (LOCAL && !episodes.length) return '<div class="empty"><p>まだ回がありません。Mac でコピーした回の中身を貼り付けて読み込みます。</p><div class="acts" style="justify-content:center"><button class="btn gold" type="button" data-act="pasteOpen">貼り付けて読み込む</button><button class="btn ghost" type="button" data-act="importOpen">ファイルから</button></div></div>';
+  if (LOCAL && !episodes.length) return `<div class="empty"><p>まだ回がありません。Mac でコピーした回の中身を貼り付けて読み込みます。</p><div class="acts" style="justify-content:center"><button class="btn gold" type="button" data-act="pasteOpen">貼り付けて読み込む</button><button class="btn ghost" type="button" data-act="importOpen">ファイルから</button></div>${verTag()}</div>`;
   return `<p class="empty">${!db || epId ? '読み込んでいます。' : '回が選ばれていません。上の題を押して、番組と回を選んでください。'}</p>`;
 }
 function recbar() {
@@ -1018,7 +1021,12 @@ function listen(timer) {
   if (!c || !c.use) {   // claude.ai の外：端末の中に保存する
     db = localDb(); LOCAL = true;
     try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
-    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});
+    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+      // 新しい版が入ったら、1回だけ開き直して新しい画面にする
+      let reloaded = false, had = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.addEventListener('controllerchange', () => { if (had && !reloaded) { reloaded = true; location.reload(); } had = true; });
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(() => {});
+    }
     listen(0); render(); return;
   }
   const timer = setTimeout(() => setSync('保存先の返事がありません。電波を確かめてください', true), 10000);
