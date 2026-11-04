@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="トレダカ">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<script>window.TOREDAKA_BUILD = "20261105001319";</script>
+<script>window.TOREDAKA_BUILD = "20261105002030";</script>
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 </head><body>
 <title>トレダカ</title>
@@ -100,7 +100,7 @@ h3 { font-family: var(--mincho); font-size: 14px; font-weight: 800; letter-spaci
 .seg button { border: 0; background: none; border-radius: 7px; padding: 6px 2px; font-weight: 700; font-size: 13px; letter-spacing: .04em; color: var(--muted); }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1px var(--line); }
 
-/* 当日の頭：場所・進み具合・次に撮るもの */
+/* 撮影のタブの頭：場所・進み具合・次に撮るもの */
 .call { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
 .call-h { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
 .call-h .lbl { flex: 0 0 auto; font-size: 12px; font-weight: 700; letter-spacing: .12em; color: var(--muted); }
@@ -273,7 +273,7 @@ h3 { font-family: var(--mincho); font-size: 14px; font-weight: 800; letter-spaci
     <button class="iconbtn" data-tab="set" aria-label="この回の設定"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="10" cy="17" r="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></button>
   </header>
   <nav class="tabs" id="tabs">
-    <button data-tab="day">当日<small id="c-day">0/0</small></button>
+    <button data-tab="day">撮影<small id="c-day">0/0</small></button>
     <button data-tab="qs">質問<small id="c-qs">0/0</small></button>
     <button data-tab="chk">確認<small id="c-chk">0/0</small></button>
     <button data-tab="log">記録<small id="c-log">0</small></button>
@@ -326,7 +326,7 @@ let EP = null;                // the selected episode body
 let EV = [];                  // events of the selected episode, ordered by at
 let tab = (location.hash.slice(1) || LS.get('tab', 'day'));
 let dayView = LS.get('dayView', 'sec');
-let editing = false;          // 当日・質問の「編集」：使う・使わないを切り替える
+let editing = false;          // 撮影・質問の「編集」：使う・使わないを切り替える
 let addOpen = null;           // 'day' | 'qs'：足す欄を開いている画面
 let sheetOpen = false, newEpFor = null, newProg = false;
 let pasteMode = null, pasteOut = '';   // 'in'：貼り付けて読み込む／'out'：自動でコピーできなかったときに選んでコピーする
@@ -547,7 +547,7 @@ function addForm(where) {
     <div class="grid2"><button class="btn ghost" type="button" data-act="addClose">やめる</button><button class="btn navy" type="submit">足す</button></div>
   </form>`;
 }
-// 当日の頭の札：撮影日・始まり・進み具合・次に撮るもの
+// 撮影のタブの頭の札：撮影日・始まり・進み具合・次に撮るもの
 function callSheet(next) {
   const cs = cutsUsed(), done = cs.filter(isDone).length;
   const qs = items().filter(it => it.kind === 'q' && used(it)), asked = qs.filter(it => qState(it.id).asked).length;
