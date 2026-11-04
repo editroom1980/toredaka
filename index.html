@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="トレダカ">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<script>window.TOREDAKA_BUILD = "20261105011424";</script>
+<script>window.TOREDAKA_BUILD = "20261105025740";</script>
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 </head><body>
 <title>トレダカ</title>
@@ -332,7 +332,7 @@ let epId = LS.get('ep', '');
 let EP = null;                // the selected episode body
 let EV = [];                  // events of the selected episode, ordered by at
 let tab = (location.hash.slice(1) || LS.get('tab', 'day'));
-let dayView = LS.get('dayView', 'sec');
+let dayView = LS.get('dayView2', 'time');   // 撮影の日は撮る順。区間の順（放送の順）は切り替えで
 let editing = false;          // 撮影・質問の「編集」：使う・使わないを切り替える
 let addOpen = null;           // 'day' | 'qs'：足す欄を開いている画面
 let sheetOpen = false, newEpFor = null, newProg = false;
@@ -505,7 +505,9 @@ function rowHTML(it, nextId) {
   if (editing) return editRowHTML(it);
   const done = evFor('cut', it.id);
   const last = done[done.length - 1];
-  const stamp = last ? `<span class="stamp">撮れた ${hms(last.at)}</span>` : '';
+  // 押した 1 回が 1 本のファイル（仮編集の道具が、押した時刻に録画していた／直前に止めたファイルに結ぶ）
+  const hm = t => hms(t).slice(0, -3);
+  const stamp = last ? `<span class="stamp">${done.length > 1 ? `撮れた ${done.length}本　${done.slice(-4).map(e => hm(e.at)).join('・')}` : `撮れた ${hms(last.at)}`}</span>` : '';
   return `<div class="row${it.must ? ' must' : ''}${last ? ' done' : ''}${nextId === it.id ? ' next' : ''}" role="checkbox" aria-checked="${last ? 'true' : 'false'}" tabindex="0" data-act="cut" data-id="${esc(it.id)}">
     <span class="tick">${TICK}</span>
     <span class="body">
@@ -514,7 +516,7 @@ function rowHTML(it, nextId) {
       ${it.note ? `<span class="note">${esc(it.note)}</span>` : ''}
       ${nextId === it.id ? '<span class="nextlab">次に撮る</span>' : ''}
       ${stamp}
-      ${last ? `<span class="acts"><button class="btn small ghost" data-act="undo" data-ev="${esc(last.id)}">取り消す</button>${done.length > 1 ? `<span class="note">${done.length}回</span>` : ''}</span>` : ''}
+      ${last ? `<span class="acts"><button class="btn small ghost" data-act="undo" data-ev="${esc(last.id)}">${done.length > 1 ? `${done.length}本目を取り消す` : '取り消す'}</button></span>` : ''}
     </span></div>`;
 }
 // 撮り方（知識/撮り方の区分.md）：原稿／自由／画／定型
@@ -578,7 +580,7 @@ function viewDay() {
       return secHead(sec, iv ? `${iv.asked}/${iv.n}問` : `${its.filter(isDone).length}/${its.length}`) + its.map(it => rowHTML(it, nextId)).join('');
     }).join('');
   }
-  const seg = `<div class="seg"><button type="button" data-act="dayView" data-v="sec" aria-pressed="${dayView === 'sec'}">区間の順</button><button type="button" data-act="dayView" data-v="time" aria-pressed="${dayView === 'time'}">時刻の順</button></div>`;
+  const seg = `<div class="seg"><button type="button" data-act="dayView" data-v="time" aria-pressed="${dayView === 'time'}">撮る順</button><button type="button" data-act="dayView" data-v="sec" aria-pressed="${dayView === 'sec'}">放送の順</button></div>`;
   $('v-day').innerHTML = `<div class="wrap">${editing ? '' : callSheet(next)}${toolbar('day', seg)}${body}</div>`;
 }
 function viewQs() {
@@ -833,10 +835,10 @@ document.addEventListener('click', e => {
   if (!a) return;
   const act = a.dataset.act, id = a.dataset.id;
   if (act === 'undo') { e.stopPropagation(); removeEvent(a.dataset.ev); toast('取り消しました'); return; }
-  if (act === 'dayView') { dayView = a.dataset.v; LS.set('dayView', dayView); render(); return; }
+  if (act === 'dayView') { dayView = a.dataset.v; LS.set('dayView2', dayView); render(); return; }
   if (act === 'mark') { logEvent('mark'); toast('印を付けました'); return; }
   if (act === 'goodNow') { const q = askingQ(); logEvent('good', q ? { ref: q.id } : {}); toast(q ? `★ 質問${q.no || ''}` : '★'); return; }
-  if (act === 'cut') { logEvent('cut', { ref: id }); toast('撮れた'); return; }
+  if (act === 'cut') { const n = evFor('cut', id).length + 1; logEvent('cut', { ref: id }); toast(n > 1 ? `撮れた　${n}本目` : '撮れた'); return; }
   if (act === 'goNext') { const el = document.querySelector('#v-day .row.next'); if (el) { el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); } return; }
   if (act === 'q') { logEvent('q', { ref: id }); return; }
   if (act === 'qend') { logEvent('qend', { ref: id }); return; }
