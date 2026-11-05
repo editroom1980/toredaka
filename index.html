@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="トレダカ">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<script>window.TOREDAKA_BUILD = "20261105101707";</script>
+<script>window.TOREDAKA_BUILD = "20261106010513";</script>
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 </head><body>
 <title>トレダカ</title>
@@ -600,7 +600,7 @@ function viewDay() {
   $('v-day').innerHTML = `<div class="wrap">${editing ? '' : callSheet(next)}${toolbar('day', seg)}${body}</div>`;
 }
 // 質問を書き換える：文・狙い・印・区間をその場で直す。上へ・下へ・使う・消す。番号は並びどおりに振り直す（締めはそのまま）
-// 書き換えた回は qsLocal を立て、公開版の自動の受け取り（pullFeed）で質問を上書きしない。台本（02・03）へは Claude が戻す
+// 書き換えた回は qsLocal を立て、公開版の自動の受け取り（pullFeed）で質問を上書きしない。Mac へは自動で送り（pushBack）、Mac の 返しを受け取る.js が台本（02・03）へ戻す
 function qEditHTML(it, its) {
   const id = esc(it.id), i = its.indexOf(it), arm = qDelArm === it.id;
   const secOpts = sections().map(s => `<option value="${esc(s.id)}"${s.id === it.section ? ' selected' : ''}>${esc(s.name)}</option>`).join('');
@@ -615,12 +615,12 @@ function qEditHTML(it, its) {
       <button class="btn small danger${arm ? ' sure' : ''}" type="button" data-act="qDel" data-id="${id}">${arm ? 'もう一度押すと消す' : '消す'}</button></div>
   </div>`;
 }
-function numberQs(list) {   // 区間の順・並びの順に 1, 2, 3…（締めはそのまま）
+function numberQs(list) {   // 区間の順・並びの順に 1, 2, 3…（締めはそのまま。使わない質問は番号を外す）
   const order = new Map(sections().map((s, i) => [s.id, i]));
-  const qs = list.map((it, i) => [it, i]).filter(([it]) => it.kind === 'q' && it.no !== '締め')
+  const qs = list.map((it, i) => [it, i]).filter(([it]) => it.kind === 'q' && it.no !== '締め' && used(it))
     .sort((a, b) => ((order.get(a[0].section) ?? 999) - (order.get(b[0].section) ?? 999)) || a[1] - b[1]);
   const no = new Map(qs.map(([it], k) => [it.id, String(k + 1)]));
-  return list.map(it => no.has(it.id) ? Object.assign({}, it, { no: no.get(it.id) }) : it);
+  return list.map(it => no.has(it.id) ? Object.assign({}, it, { no: no.get(it.id) }) : it.kind === 'q' && it.no !== '締め' && !used(it) ? Object.assign({}, it, { no: '' }) : it);
 }
 const saveQs = (list, msg) => { saveEp({ items: numberQs(list), qsLocal: true }); if (msg) toast(msg); };
 function moveQ(id, d) {
@@ -913,7 +913,9 @@ function viewSet() {
       ${LOCAL ? `<p class="lead">記録はこの端末の中にだけあります。</p>${verTag()}` : ''}
     </div>
     ${LOCAL ? `<h3>中身の受け取り</h3>
-    <div class="card">${LS.get('feedKey', '') ? `<p class="lead">開くたびに、最新の回の中身（撮る項目・質問）を受け取ります。押した記録・答え・現場で足した項目・使う／使わないは、そのまま残ります。${LS.get('feedAt', 0) ? `最後に受け取った時刻：${new Date(LS.get('feedAt', 0)).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}</p><button class="btn wide" data-act="feedPull" type="button">いま受け取る</button>` : '<p class="lead">鍵がまだ入っていません。鍵のリンクを開くか、鍵を「貼り付けて読み込む」に貼ると、開くたびに最新の回の中身を受け取ります。</p>'}</div>` : ''}
+    <div class="card">${LS.get('feedKey', '') ? `<p class="lead">開くたびに、最新の回の中身（撮る項目・質問）を受け取ります。押した記録・答え・現場で足した項目・使う／使わないは、そのまま残ります。${LS.get('feedAt', 0) ? `最後に受け取った時刻：${new Date(LS.get('feedAt', 0)).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ''}</p><button class="btn wide" data-act="feedPull" type="button">いま受け取る</button>` : '<p class="lead">鍵がまだ入っていません。鍵のリンクを開くか、鍵を「貼り付けて読み込む」に貼ると、開くたびに最新の回の中身を受け取ります。</p>'}</div>
+    <h3>Mac へ送る</h3>
+    <div class="card">${LS.get('pushKey', '') ? `<p class="lead">質問を書き換えたり、項目を押したりすると、少しあとで Mac へ自動で送ります（鍵で閉じて送ります）。Mac では台本と編集の道具に入ります。<span id="pushSt">${pushStatus()}</span></p><button class="btn wide" data-act="pushNow" type="button">いま Mac へ送る</button>` : '<p class="lead">Mac へ送る鍵がまだ入っていません。GitHub で作った鍵（github_pat_ で始まる文字）を「貼り付けて読み込む」に貼ると、書き換えた質問と押した記録が自動で Mac に届きます。</p>'}</div>` : ''}
   </div>`;
 }
 function viewSheet() {
@@ -1015,8 +1017,9 @@ document.addEventListener('click', e => {
   if (act === 'pasteOpen') { sheetOpen = false; pasteMode = 'in'; render(); return; }
   if (act === 'pasteClose') { pasteMode = null; document.activeElement && document.activeElement.blur(); render(); return; }
   if (act === 'pasteRead') { try { navigator.clipboard.readText().then(t => { $('pasteIn').value = t; toast('貼りました。「読み込む」を押してください'); }, () => { $('pasteIn').focus(); toast('欄を長押しして「ペースト」を押してください'); }); } catch (err) { $('pasteIn').focus(); } return; }
-  if (act === 'pasteDo') { const t = $('pasteIn').value; if (!t.trim()) { toast('まだ何も貼られていません'); return; } const tt = t.trim(), k = FEED_RE.exec(/^[A-Za-z0-9_-]{43}$/.test(tt) ? 'k=' + tt : tt); if (k && tt.length < 200) { LS.set('feedKey', k[1]); LS.set('feedHash', {}); pasteMode = null; sheetOpen = false; render(); pullFeed(false); return; } importText(t); return; }
+  if (act === 'pasteDo') { const t = $('pasteIn').value; if (!t.trim()) { toast('まだ何も貼られていません'); return; } const tt = t.trim(); if (PAT_RE.test(tt)) { LS.set('pushKey', tt); LS.set('pushHash', {}); LS.set('pushErr', ''); pasteMode = null; sheetOpen = false; render(); if (!LS.get('feedKey', '')) toast('Mac へ送る鍵を入れました。先に中身の鍵も入れてください'); else pushBack(false); return; } const k = FEED_RE.exec(/^[A-Za-z0-9_-]{43}$/.test(tt) ? 'k=' + tt : tt); if (k && tt.length < 200) { LS.set('feedKey', k[1]); LS.set('feedHash', {}); pasteMode = null; sheetOpen = false; render(); pullFeed(false); return; } importText(t); return; }
   if (act === 'feedPull') { pullFeed(false); return; }
+  if (act === 'pushNow') { pushBack(false); return; }
   if (act === 'chkCopy') {
     const t = chkText();
     try { navigator.clipboard.writeText(t).then(() => { sumText = ''; toast('コピーしました'); render(); }, () => { sumText = t; render(); toast('下の欄から選んでコピーしてください'); }); }
@@ -1046,7 +1049,7 @@ document.addEventListener('change', e => {
     if (f === 'text' && !v) { el.value = it.text; toast('質問が空です'); return; }
     saveQs(items().map(x => x.id === id ? Object.assign({}, x, { [f]: v }) : x), '保存しました'); return;
   }
-  if (el.dataset.use) { saveItems(items().map(it => it.id === el.dataset.use ? Object.assign({}, it, { use: el.checked }) : it)); return; }
+  if (el.dataset.use) { const next = items().map(it => it.id === el.dataset.use ? Object.assign({}, it, { use: el.checked }) : it), q = next.find(it => it.id === el.dataset.use); if (q && q.kind === 'q') saveQs(next); else saveItems(next); return; }
   if (el.dataset.epf) { const v = el.value.trim(); if ((EP[el.dataset.epf] || '') !== v) { saveEp({ [el.dataset.epf]: v }); toast('保存しました'); } return; }
   if (el.dataset.ans) { const id = el.dataset.ans; clearTimeout(ansT[id]); if (((ANS[id] || {}).a || '') !== el.value) { saveAnswer(id, el.value); toast('保存しました'); } return; }
   if (el.classList.contains('noteIn')) { noteEvent(el.dataset.ev, el.value); toast('メモを残しました'); }
@@ -1141,7 +1144,7 @@ function localDb() {
   const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(store)); return true; } catch (e) { return false; } };
   const fire = () => setTimeout(() => subs.forEach(f => f()), 0);
   const snap = path => ({ id: path.split('/').pop(), exists: path in store, data: () => clone(store[path]) });
-  const write = fn => { fn(); if (!persist()) return Promise.reject({ code: 'storage_full' }); fire(); return Promise.resolve(); };
+  const write = fn => { fn(); if (!persist()) return Promise.reject({ code: 'storage_full' }); fire(); pushSoon(); return Promise.resolve(); };
   const rid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   function doc(path) {
     return { id: path.split('/').pop(),
@@ -1157,7 +1160,7 @@ function localDb() {
       onSnapshot(cb) { const f = () => { const docs = kids().map(snap); if (q.o) docs.sort((a, b) => (a.data()[q.o] || 0) - (b.data()[q.o] || 0)); cb({ docs }); }; subs.add(f); setTimeout(f, 0); return () => subs.delete(f); } };
     return q;
   }
-  return { doc, collection, local: true, all: () => clone(store), put: (path, body) => { store[path] = clone(body); }, commit: () => { if (!persist()) return false; fire(); return true; } };
+  return { doc, collection, local: true, all: () => clone(store), put: (path, body) => { store[path] = clone(body); }, commit: () => { if (!persist()) return false; fire(); pushSoon(); return true; } };
 }
 // 中身を受け取る（公開版だけ）：Claude が toredaka に置いた nakami.bin（AES-256-GCM。鍵は端末の中だけ）を取り、回の中身を入れ替える。作り手は GitHub/中身を配る.js
 // 入れ替えても残すもの：押した記録・答え（別の場所にある）、現場で足した項目（src: 'field'）、使う／使わない（use）、カメラの設定（cams）、端末で書き換えた質問（qsLocal）。中身が変わった回だけ入れ替える（feedHash）
@@ -1171,24 +1174,24 @@ async function pullFeed(quiet) {
     const res = await fetch('nakami.bin', { cache: 'no-store' });
     if (!res.ok) throw new Error('fetch');
     const buf = new Uint8Array(await res.arrayBuffer());
-    const raw = Uint8Array.from(atob(k.replace(/-/g, '+').replace(/_/g, '/') + '='), c => c.charCodeAt(0));
-    const key = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
+    const key = await crypto.subtle.importKey('raw', keyBytes(k), 'AES-GCM', false, ['decrypt']);
     let o;
     try { o = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12)))); }
     catch (e) { if (!quiet) toast('鍵が合いません。鍵を貼り直してください'); return; }
     if (!o || o.format !== 'toredaka-feed/1') return;
     const seen = LS.get('feedHash', {}) || {}, all = db.all(), names = [];
-    (o.episodes || []).forEach(e => {
-      if (!e || !e.id || !e.episode || seen[e.id] === e.hash) return;
+    for (const e of (o.episodes || [])) {
+      if (!e || !e.id || !e.episode || seen[e.id] === e.hash) continue;
       const cur = all[`episodes/${e.id}`], b = clone(e.episode);
       if (cur) {
         const off = new Set((cur.items || []).filter(x => x.use === false).map(x => x.id)), ids = new Set((b.items || []).map(x => x.id));
         b.items = (b.items || []).map(x => off.has(x.id) ? Object.assign({}, x, { use: false }) : x).concat((cur.items || []).filter(x => x.src === 'field' && !ids.has(x.id)));
         if (Array.isArray(cur.cams)) b.cams = cur.cams;
-        if (cur.qsLocal) { b.items = b.items.filter(x => x.kind !== 'q').concat((cur.items || []).filter(x => x.kind === 'q')); b.qsLocal = true; }   // 端末で書き換えた質問は上書きしない
+        // 端末で書き換えた質問は上書きしない。ただし Mac が取り込んだあと（qsFrom＝端末の質問の指紋）は Mac の質問を受け取る
+        if (cur.qsLocal && !(b.qsFrom && b.qsFrom === await sha16(qPrint(cur.items)))) { b.items = b.items.filter(x => x.kind !== 'q').concat((cur.items || []).filter(x => x.kind === 'q')); b.qsLocal = true; }
       }
       db.put(`episodes/${e.id}`, b); seen[e.id] = e.hash; names.push(b.title || e.id);
-    });
+    }
     LS.set('feedAt', Date.now());
     if (!names.length) { if (!quiet) toast('もう最新です'); render(); return; }
     if (!db.commit()) { toast('端末の空きが足りません'); return; }
@@ -1196,6 +1199,75 @@ async function pullFeed(quiet) {
     toast(`最新の中身にしました（${names.join('・')}）`);
   } catch (e) { if (!quiet) toast('受け取れませんでした。電波を確かめてください'); }
   finally { feedBusy = false; }
+}
+/* ---------- Mac へ送る（公開版だけ）：回の中身・押した記録・答えを鍵で閉じ、toredaka の kaeshi の枝に置く ---------- */
+// 受け取るのは Mac の GitHub/返しを受け取る.js。書き込みの鍵（GitHub の fine-grained token。toredaka の Contents だけ）は端末の中だけ（pushKey）。
+// 閉じる鍵は中身の鍵（feedKey）。ファイル：1バイト目（1=gzip・0=そのまま）＋ iv 12 ＋ 暗号文。名前は鍵と回から作る（公開の場所に回の名前を出さない）
+const PUSH_REPO = (() => { const o = /^([a-z0-9-]+)\.github\.io$/i.exec(location.hostname), r = location.pathname.split('/').filter(Boolean)[0]; return o && r ? `${o[1]}/${r}` : 'editroom1980/toredaka'; })();
+const PAT_RE = /^(github_pat_[A-Za-z0-9_]{40,}|gh[pousr]_[A-Za-z0-9]{30,})$/;
+const keyBytes = k => Uint8Array.from(atob(k.replace(/-/g, '+').replace(/_/g, '/') + '='), c => c.charCodeAt(0));
+const b64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
+async function sha16(str) { const h = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str))); return [...h.slice(0, 8)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+// 質問の指紋：Mac の 検査/質問を戻す.js の qPrint と同じ式（変えるときは両方を変える）
+const qPrint = its => JSON.stringify((its || []).filter(x => x.kind === 'q').map(x => [x.id, x.section || '', String(x.no || ''), x.text || '', x.note || '', x.role || '', x.must ? 1 : 0, x.use === false ? 0 : 1]));
+async function gzip(u8) { if (typeof CompressionStream === 'undefined') return null; try { return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer()); } catch (e) { return null; } }
+function epOf(all, id) {
+  const log = [], answers = {}, pre = `episodes/${id}/`;
+  Object.keys(all).forEach(j => { if (!j.startsWith(pre)) return; const r = j.slice(pre.length).split('/'); if (r.length !== 2) return;
+    if (r[0] === 'log') log.push(Object.assign({ id: r[1] }, all[j])); else if (r[0] === 'answers') answers[r[1]] = all[j]; });
+  return { id, episode: all[`episodes/${id}`], log: log.sort((a, b) => a.at - b.at), answers };
+}
+let pushTimer = 0, pushBusy = false, pushAgain = false;
+function pushSoon(ms) { if (!LOCAL || !LS.get('pushKey', '') || !LS.get('feedKey', '')) return; clearTimeout(pushTimer); pushTimer = setTimeout(() => pushBack(true), ms == null ? 4000 : ms); }
+function pushStatus() {
+  const e = LS.get('pushErr', ''), at = LS.get('pushAt', 0);
+  if (e === 'key') return '鍵が使えませんでした。鍵を作り直して、貼り直してください。';
+  if (e === 'net') return 'まだ送れていません。電波が戻ったら送ります。';
+  return at ? `最後に送った時刻：${new Date(at).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : '';
+}
+async function ghPut(tok, file, content) {
+  const url = `https://api.github.com/repos/${PUSH_REPO}/contents/${file}`;
+  const h = { Authorization: `Bearer ${tok}`, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+  for (let n = 0; n < 3; n++) {
+    let sha;
+    const g = await fetch(`${url}?ref=kaeshi&t=${Date.now()}`, { headers: h, cache: 'no-store' });
+    if (g.status === 401 || g.status === 403) return 'key';
+    if (g.ok) sha = (await g.json()).sha; else if (g.status !== 404) return 'net';
+    const r = await fetch(url, { method: 'PUT', headers: h, body: JSON.stringify(Object.assign({ message: 'トレダカから返す', content, branch: 'kaeshi' }, sha ? { sha } : {})) });
+    if (r.ok) return 'ok';
+    if (r.status === 401 || r.status === 403 || r.status === 404) return 'key';
+    if (r.status !== 409 && r.status !== 422) return 'net';   // 409・422：ほかの端末と同時に書いた。読み直してもう一度
+  }
+  return 'net';
+}
+async function pushBack(quiet) {
+  const tok = LS.get('pushKey', ''), k = LS.get('feedKey', '');
+  if (!LOCAL || !tok || !k || !(window.crypto && crypto.subtle)) { if (!quiet) toast(k ? 'Mac へ送る鍵が入っていません' : '先に中身の鍵を入れてください'); return; }
+  if (pushBusy) { pushAgain = true; return; }
+  pushBusy = true; clearTimeout(pushTimer);
+  let sent = 0, fail = '';
+  try {
+    const all = db.all(), done = LS.get('pushHash', {}) || {}, seen = LS.get('feedHash', {}) || {};
+    const key = await crypto.subtle.importKey('raw', keyBytes(k), 'AES-GCM', false, ['encrypt']);
+    for (const p of Object.keys(all)) {
+      const m = /^episodes\/([^/]+)$/.exec(p); if (!m) continue;
+      const e = epOf(all, m[1]), h = await sha16(JSON.stringify([e, seen[e.id] || '']));
+      if (done[e.id] === h) continue;
+      const plain = new TextEncoder().encode(JSON.stringify({ format: 'toredaka-kaeshi/1', sentAt: new Date().toISOString(), feedSeen: seen[e.id] || '', program: all[`programs/${(e.episode || {}).program || 'imakaga'}`] || null, episode: e }));
+      const z = await gzip(plain), iv = crypto.getRandomValues(new Uint8Array(12));
+      const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, z || plain));
+      const out = new Uint8Array(13 + ct.length); out[0] = z ? 1 : 0; out.set(iv, 1); out.set(ct, 13);
+      const r = await ghPut(tok, `kaeshi/${await sha16('kaeshi:' + k + ':' + e.id)}.bin`, b64(out));
+      if (r !== 'ok') { fail = r; break; }
+      done[e.id] = h; LS.set('pushHash', done); sent++;
+    }
+  } catch (err) { fail = 'net'; }
+  pushBusy = false;
+  LS.set('pushErr', fail); if (!fail) LS.set('pushAt', Date.now());
+  const st = $('pushSt'); if (st) st.textContent = pushStatus();
+  if (fail === 'key') toast('Mac へ送れませんでした。鍵を確かめてください');
+  else if (!quiet) toast(fail ? 'Mac へ送れませんでした。電波が戻ったら送ります' : sent ? 'Mac へ送りました' : 'もう送ってあります');
+  if (pushAgain) { pushAgain = false; pushSoon(1000); }
 }
 function listen(timer) {
   db.collection('programs').onSnapshot(s => {
@@ -1223,8 +1295,8 @@ function listen(timer) {
       navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(() => {});
     }
     listen(0); render();
-    pullFeed(true);
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') pullFeed(true); });
+    pullFeed(true); pushSoon(3000);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { pullFeed(true); pushSoon(3000); } else if (pushTimer) pushBack(true); });
     return;
   }
   const timer = setTimeout(() => setSync('保存先の返事がありません。電波を確かめてください', true), 10000);
