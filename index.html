@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="トレダカ">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<script>window.TOREDAKA_BUILD = "20261105030609";</script>
+<script>window.TOREDAKA_BUILD = "20261105093853";</script>
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 </head><body>
 <title>トレダカ</title>
@@ -187,6 +187,9 @@ h3 { font-family: var(--mincho); font-size: 14px; font-weight: 800; letter-spaci
 .q .no { font-family: var(--mincho); font-weight: 800; font-size: 21px; line-height: 1; color: var(--accent); min-width: 1.6em; }
 .q.done .no { color: var(--ok); }
 .q .txt { font-size: 15px; font-weight: 700; min-width: 0; }
+.q .role { flex: none; margin-left: auto; font-size: 11px; font-weight: 700; letter-spacing: .08em; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
+.q .role.core { border-color: var(--accent); color: var(--accent); }
+.q.lead .txt { font-weight: 500; }   /* 前提の問い：話の土台。核心の問い（太字）が目に入るように */
 .stars { color: var(--gold); font-weight: 700; }
 
 .log { display: grid; grid-template-columns: 70px 1fr auto; gap: 8px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; font-size: 14px; }
@@ -598,8 +601,8 @@ function viewQs() {
       const btns = s.asking
         ? `<button class="btn gold" data-act="good" data-id="${esc(it.id)}">★ 良い答え</button><button class="btn navy" data-act="qend" data-id="${esc(it.id)}">終わり</button>`
         : `<button class="btn${s.asked ? ' ghost' : ' navy'}" data-act="q" data-id="${esc(it.id)}">${s.asked ? 'もう一度聞く' : '聞く'}</button>${s.last ? `<button class="btn small ghost" data-act="undo" data-ev="${esc(s.last.id)}">取り消す</button>` : ''}`;
-      return `<div class="q${it.must ? ' must' : ''}${cls}">
-        <div class="qt"><span class="no">${esc(it.no || '')}</span><span class="txt">${esc(it.text)}</span></div>
+      return `<div class="q${it.must ? ' must' : ''}${it.role === '前提' ? ' lead' : ''}${cls}">
+        <div class="qt"><span class="no">${esc(it.no || '')}</span><span class="txt">${esc(it.text)}</span>${it.role ? `<span class="role${it.role === '核心' ? ' core' : ''}">${esc(it.role)}</span>` : ''}</div>
         ${it.note ? `<span class="note">${esc(it.note)}</span>` : ''}
         ${s.asked ? `<span class="stamp">${s.asking ? '聞いている　' : ''}${hms(s.last.at)}${s.n > 1 ? `　${s.n}回` : ''}${s.good ? `　<span class="stars">${'★'.repeat(Math.min(s.good, 3))}</span>` : ''}</span>` : ''}
         <div class="acts">${btns}</div></div>`;
