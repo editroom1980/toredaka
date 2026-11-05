@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="トレダカ">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<script>window.TOREDAKA_BUILD = "20261105100027";</script>
+<script>window.TOREDAKA_BUILD = "20261105101707";</script>
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 </head><body>
 <title>トレダカ</title>
@@ -189,6 +189,13 @@ h3 { font-family: var(--mincho); font-size: 14px; font-weight: 800; letter-spaci
 .q .txt { font-size: 15px; font-weight: 700; min-width: 0; }
 .q .role { flex: none; margin-left: auto; font-size: 11px; font-weight: 700; letter-spacing: .08em; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
 .q .role.core { border-color: var(--accent); color: var(--accent); }
+.q.qe .qt { align-items: flex-start; }
+.q.qe .qt .field { flex: 1; }
+.q.qe textarea { resize: none; overflow: hidden; line-height: 1.5; }
+.q.qe textarea[data-qf="text"] { font-weight: 700; }
+.q.qe textarea[data-qf="note"] { font-size: 14px; }
+.q.qe.off { opacity: .55; }
+.q.qe .use { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--muted); }
 .q.lead .txt { font-weight: 500; }   /* 前提の問い：話の土台。核心の問い（太字）が目に入るように */
 .stars { color: var(--gold); font-weight: 700; }
 
@@ -212,6 +219,7 @@ h3 { font-family: var(--mincho); font-size: 14px; font-weight: 800; letter-spaci
 .field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .field span { font-size: 12px; font-weight: 700; letter-spacing: .08em; color: var(--muted); }
 .field input, .field select, .field textarea { width: 100%; min-height: 44px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--bg); padding: 8px 10px; font-size: 16px; }
+.field select { -webkit-appearance: none; appearance: none; padding-right: 30px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%238a8a8e' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 11px center; text-overflow: ellipsis; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .camrow { display: grid; grid-template-columns: 34px 1fr 1fr auto; gap: 8px; align-items: end; }
 .camrow .cid { font-family: var(--mincho); font-weight: 800; font-size: 26px; line-height: 1; color: var(--accent); text-align: center; padding-bottom: 10px; }
@@ -339,6 +347,7 @@ const FEED_RE = /(?:^|[#&])k=([A-Za-z0-9_-]{43})(?![A-Za-z0-9_-])/;
 (() => { const m = FEED_RE.exec(location.hash); if (!m) return; LS.set('feedKey', m[1]); try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} })();
 let tab = (location.hash.slice(1) || LS.get('tab', 'day'));
 let dayView = LS.get('dayView2', 'time');   // 撮影の日は撮る順。区間の順（放送の順）は切り替えで
+let qedit = false, qDelArm = null, sheetBlob = null;   // 質問を書き換える／消す前の確かめ／作った質問シート（共有の画面が開けなかったとき用）
 let editing = false;          // 撮影・質問の「編集」：使う・使わないを切り替える
 let addOpen = null;           // 'day' | 'qs'：足す欄を開いている画面
 let sheetOpen = false, newEpFor = null, newProg = false;
@@ -590,14 +599,148 @@ function viewDay() {
   const seg = `<div class="seg"><button type="button" data-act="dayView" data-v="time" aria-pressed="${dayView === 'time'}">撮る順</button><button type="button" data-act="dayView" data-v="sec" aria-pressed="${dayView === 'sec'}">放送の順</button></div>`;
   $('v-day').innerHTML = `<div class="wrap">${editing ? '' : callSheet(next)}${toolbar('day', seg)}${body}</div>`;
 }
+// 質問を書き換える：文・狙い・印・区間をその場で直す。上へ・下へ・使う・消す。番号は並びどおりに振り直す（締めはそのまま）
+// 書き換えた回は qsLocal を立て、公開版の自動の受け取り（pullFeed）で質問を上書きしない。台本（02・03）へは Claude が戻す
+function qEditHTML(it, its) {
+  const id = esc(it.id), i = its.indexOf(it), arm = qDelArm === it.id;
+  const secOpts = sections().map(s => `<option value="${esc(s.id)}"${s.id === it.section ? ' selected' : ''}>${esc(s.name)}</option>`).join('');
+  const roleOpts = [['前提', '前提'], ['核心', '核心'], ['', 'なし']].map(([v, l]) => `<option value="${v}"${(it.role || '') === v ? ' selected' : ''}>${l}</option>`).join('');
+  return `<div class="q qe${used(it) ? '' : ' off'}">
+    <div class="qt"><span class="no">${esc(it.no || '')}</span><label class="field" for="qt-${id}"><span>質問</span><textarea id="qt-${id}" rows="${Math.max(2, Math.ceil([...(it.text || '')].length / 14))}" data-qf="text" data-id="${id}">${esc(it.text)}</textarea></label></div>
+    <label class="field" for="qn-${id}"><span>狙い（質問シートに載ります）</span><textarea id="qn-${id}" rows="${Math.max(1, Math.ceil([...(it.note || '')].length / 21))}" data-qf="note" data-id="${id}">${esc(it.note || '')}</textarea></label>
+    <div class="grid2"><label class="field" for="qr-${id}"><span>印</span><select id="qr-${id}" data-qf="role" data-id="${id}">${roleOpts}</select></label>
+      <label class="field" for="qs-${id}"><span>区間</span><select id="qs-${id}" data-qf="section" data-id="${id}">${secOpts}</select></label></div>
+    <div class="acts"><button class="btn small" type="button" data-act="qMove" data-d="-1" data-id="${id}"${i <= 0 ? ' disabled' : ''}>↑ 上へ</button><button class="btn small" type="button" data-act="qMove" data-d="1" data-id="${id}"${i >= its.length - 1 ? ' disabled' : ''}>↓ 下へ</button>
+      <label class="use" for="qu-${id}"><input type="checkbox" id="qu-${id}" data-use="${id}"${used(it) ? ' checked' : ''}>使う</label><span class="spacer"></span>
+      <button class="btn small danger${arm ? ' sure' : ''}" type="button" data-act="qDel" data-id="${id}">${arm ? 'もう一度押すと消す' : '消す'}</button></div>
+  </div>`;
+}
+function numberQs(list) {   // 区間の順・並びの順に 1, 2, 3…（締めはそのまま）
+  const order = new Map(sections().map((s, i) => [s.id, i]));
+  const qs = list.map((it, i) => [it, i]).filter(([it]) => it.kind === 'q' && it.no !== '締め')
+    .sort((a, b) => ((order.get(a[0].section) ?? 999) - (order.get(b[0].section) ?? 999)) || a[1] - b[1]);
+  const no = new Map(qs.map(([it], k) => [it.id, String(k + 1)]));
+  return list.map(it => no.has(it.id) ? Object.assign({}, it, { no: no.get(it.id) }) : it);
+}
+const saveQs = (list, msg) => { saveEp({ items: numberQs(list), qsLocal: true }); if (msg) toast(msg); };
+function moveQ(id, d) {
+  const list = items().slice(), it = list.find(x => x.id === id); if (!it) return;
+  const same = list.map((x, k) => [x, k]).filter(([x]) => x.kind === 'q' && (x.section || '') === (it.section || ''));
+  const at = same.findIndex(([x]) => x.id === id), to = same[at + d]; if (!to) return;
+  const i = same[at][1], j = to[1]; [list[i], list[j]] = [list[j], list[i]];
+  saveQs(list);
+}
+/* ---------- 質問シート（PDF）：リポーターに渡す。A4 縦を画として組み、PDF に包む（日本語の書体を埋め込まずに済む） ---------- */
+async function sheetPages() {
+  try { await Promise.all(['800 40px "Shippori Mincho B1"', '700 24px "BIZ UDPGothic"', '400 24px "BIZ UDPGothic"'].map(f => document.fonts.load(f))); } catch (e) {}
+  const W = 1240, H = 1754, M = 96, FOOT = 70, CW = W - M * 2;
+  const MIN = '"Shippori Mincho B1", "Hiragino Mincho ProN", serif', GO = '"BIZ UDPGothic", "Hiragino Sans", sans-serif';
+  const INK = '#1d1d1f', MUTE = '#6b6b70', GOLD = '#a8790f', LINE = '#d6d0c4';
+  const mg = document.createElement('canvas').getContext('2d');
+  const wrap = (t, font, w) => { mg.font = font; const out = []; let line = '';
+    for (const ch of String(t || '')) {
+      if (ch === '\n') { out.push(line); line = ''; continue; }
+      const nl = line + ch;
+      if (mg.measureText(nl).width > w && line) { if (/[、。，．」』）！？ー・]/.test(ch)) { out.push(nl); line = ''; } else { out.push(line); line = ch; } }
+      else line = nl;
+    }
+    if (line) out.push(line);
+    const n = out.length; if (n > 1 && [...out[n - 1]].length <= 2) { const pv = [...out[n - 2]]; if (pv.length > 4) { out[n - 1] = pv.slice(-2).join('') + out[n - 1]; out[n - 2] = pv.slice(0, -2).join(''); } }   // 最後の行に1〜2字だけ残さない
+    return out; };
+  const pages = []; let g, y;
+  const page = () => { const c = document.createElement('canvas'); c.width = W; c.height = H; g = c.getContext('2d'); g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, H); g.textBaseline = 'top'; pages.push(c); y = M; };
+  const room = h => { if (y + h > H - M - FOOT) page(); };
+  const text = (lines, font, color, x, lh) => { g.font = font; g.fillStyle = color; lines.forEach(l => { g.fillText(l, x, y); y += lh; }); };
+  const prog = progById(progOf(EP)), qs = items().filter(it => it.kind === 'q' && used(it));
+  page();
+  // 頭
+  text([prog.name || ''], `700 24px ${GO}`, MUTE, M, 36);
+  text(['リポーター用質問シート'], `800 52px ${MIN}`, INK, M, 72);
+  text(wrap(EP.title || '', `800 40px ${MIN}`, CW), `800 40px ${MIN}`, INK, M, 56);
+  const dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(EP.date || ''), wd = dm ? '日月火水木金土'[new Date(+dm[1], dm[2] - 1, +dm[3]).getDay()] : '';
+  const when = [dm ? `撮影　${dm[1]}年${+dm[2]}月${+dm[3]}日（${wd}）${EP.call ? `　${EP.call}〜` : ''}` : '', EP.place ? `場所　${EP.place}` : ''].filter(Boolean).join('　　');
+  y += 6; text(wrap(when, `400 26px ${GO}`, CW), `400 26px ${GO}`, INK, M, 40);
+  y += 14;
+  const lead = wrap('このシートはリポーター専用です。場面の流れに合わせて使い、無理に全部聞く必要はありません。会話の自然な流れを最優先にしてください。', `400 24px ${GO}`, CW - 40);
+  const legend = qs.some(it => it.role) ? wrap('印　前提＝話の土台をつくる問い　／　核心＝番組で使う答えを引き出す問い。前提の答えを受けて、核心の問いにつながるように並べています。', `400 22px ${GO}`, CW - 40) : [];
+  const bh = 28 + lead.length * 36 + (legend.length ? 10 + legend.length * 32 : 0) + 22;
+  g.strokeStyle = LINE; g.lineWidth = 2; g.strokeRect(M, y, CW, bh); y += 24;
+  text(lead, `400 24px ${GO}`, INK, M + 20, 36);
+  if (legend.length) { y += 10; text(legend, `400 22px ${GO}`, MUTE, M + 20, 32); }
+  y += 34;
+  // 区間ごと
+  const secs = sections().concat([{ id: '', name: 'そのほか' }]);
+  secs.forEach(sec => {
+    const its = qs.filter(it => (it.section || '') === sec.id); if (!its.length) return;
+    if (sec.id === 'end') {   // 締めの質問は最後に単独で
+      its.forEach(it => {
+        const tl = wrap(it.text, `800 38px ${MIN}`, CW - 60), h = 30 + 40 + 12 + tl.length * 54 + 30;
+        room(h + 20); y += 10;
+        g.strokeStyle = GOLD; g.lineWidth = 3; g.strokeRect(M, y, CW, h); const y0 = y; y += 30;
+        text(['★ 締めの質問'], `700 26px ${GO}`, GOLD, M + 30, 40); y += 12;
+        text(tl, `800 38px ${MIN}`, INK, M + 30, 54); y = y0 + h + 30;
+      });
+      return;
+    }
+    const head = `${sec.name || ''}${sec.time ? `　${sec.time}ごろ` : ''}`;
+    room(70 + 120); y += 10;
+    text([head], `800 32px ${MIN}`, INK, M, 46);
+    g.fillStyle = GOLD; g.fillRect(M, y + 2, CW, 3); y += 26;
+    its.forEach(it => {
+      const TX = M + 74, TW = CW - 74 - (it.role ? 96 : 0);
+      const tl = wrap(it.text, `700 30px ${GO}`, TW), nl = it.note ? wrap('狙い：' + it.note, `400 22px ${GO}`, CW - 74) : [];
+      const h = tl.length * 44 + (nl.length ? 8 + nl.length * 32 : 0) + 30;
+      room(h);
+      const y0 = y;
+      g.font = `800 38px ${MIN}`; g.fillStyle = GOLD; g.fillText(it.no || '', M, y0 - 2);
+      if (it.role) { const core = it.role === '核心'; g.strokeStyle = core ? GOLD : '#9a9aa0'; g.lineWidth = 2; g.strokeRect(M + CW - 82, y0 + 2, 82, 36); g.font = `700 22px ${GO}`; g.fillStyle = core ? GOLD : MUTE; g.textAlign = 'center'; g.fillText(it.role, M + CW - 41, y0 + 9); g.textAlign = 'left'; }
+      text(tl, `700 30px ${GO}`, INK, TX, 44);
+      if (nl.length) { y += 8; text(nl, `400 22px ${GO}`, MUTE, TX, 32); }
+      y += 14; g.fillStyle = LINE; g.fillRect(TX, y, CW - 74, 1); y += 16;
+    });
+    y += 18;
+  });
+  pages.forEach((c, i) => { const x = c.getContext('2d'); x.font = `400 20px ${GO}`; x.fillStyle = MUTE; x.textAlign = 'center'; x.textBaseline = 'top'; x.fillText(`${EP.title || ''}　質問シート　${i + 1} / ${pages.length}`, W / 2, H - M + 10); });
+  return pages;
+}
+async function pdfOf(cs) {   // 画（JPEG）を1ページずつ並べた PDF を組む
+  const enc = new TextEncoder(), parts = [], offs = []; let len = 0;
+  const push = p => { const b = typeof p === 'string' ? enc.encode(p) : p; parts.push(b); len += b.length; };
+  const jpg = await Promise.all(cs.map(c => new Promise((ok, ng) => c.toBlob(b => b ? b.arrayBuffer().then(a => ok(new Uint8Array(a)), ng) : ng(new Error('toBlob')), 'image/jpeg', 0.9))));
+  const PW = 595.28, PH = 841.89, obj = (id, fn) => { offs[id] = len; push(`${id} 0 obj\n`); fn(); push('\nendobj\n'); };
+  push('%PDF-1.4\n%\u00e2\u00e3\u00cf\u00d3\n');
+  obj(1, () => push('<< /Type /Catalog /Pages 2 0 R >>'));
+  obj(2, () => push(`<< /Type /Pages /Count ${cs.length} /Kids [${cs.map((c, i) => `${3 + 3 * i} 0 R`).join(' ')}] >>`));
+  cs.forEach((c, i) => {
+    const p = 3 + 3 * i, st = `q ${PW} 0 0 ${PH} 0 0 cm /Im0 Do Q`;
+    obj(p, () => push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PW} ${PH}] /Resources << /XObject << /Im0 ${p + 2} 0 R >> >> /Contents ${p + 1} 0 R >>`));
+    obj(p + 1, () => push(`<< /Length ${st.length} >>\nstream\n${st}\nendstream`));
+    obj(p + 2, () => { push(`<< /Type /XObject /Subtype /Image /Width ${c.width} /Height ${c.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg[i].length} >>\nstream\n`); push(jpg[i]); push('\nendstream'); });
+  });
+  const n = 3 + 3 * cs.length, xref = len;
+  push(`xref\n0 ${n}\n0000000000 65535 f \n` + offs.slice(1).map(o => String(o).padStart(10, '0') + ' 00000 n \n').join(''));
+  push(`trailer\n<< /Size ${n} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+  return new Blob(parts, { type: 'application/pdf' });
+}
+const sheetName = () => `質問シート_${(EP.title || epId).replace(/[\\/:*?"<>|\s]+/g, '')}${EP.date ? '_' + EP.date.replace(/-/g, '').slice(4) : ''}.pdf`;
+async function sendSheet() {
+  if (!EP) { toast('回を選んでください'); return; }
+  if (!items().some(it => it.kind === 'q' && used(it))) { toast('使う質問がありません'); return; }
+  toast('質問シートを作っています');
+  try { sheetBlob = await pdfOf(await sheetPages()); } catch (e) { sheetBlob = null; toast('質問シートを作れませんでした'); return; }
+  const r = await saveBlob(sheetName(), sheetBlob, 'application/pdf', '質問シートを送りました');
+  if (r !== 'retry') sheetBlob = null;
+  render();
+}
 function viewQs() {
-  const qs = items().filter(it => it.kind === 'q' && (editing || used(it)));
+  const qs = items().filter(it => it.kind === 'q' && (editing || qedit || used(it)));
   let body = '';
   if (!qs.length) body = '<p class="empty">質問はまだありません。</p>';
   else body = sections().concat([{ id: '', name: '区間なし' }]).map(sec => {
     const its = qs.filter(it => (it.section || '') === sec.id);
     if (!its.length) return '';
     return `<div class="qanchor" id="qsec-${esc(sec.id)}"></div>` + secHead(sec, `${its.filter(it => qState(it.id).done).length}/${its.length}`) + its.map(it => {
+      if (qedit) return qEditHTML(it, its);
       if (editing) return editRowHTML(it);
       const s = qState(it.id);
       const cls = s.asking ? ' asking' : s.done ? ' done' : '';
@@ -611,7 +754,10 @@ function viewQs() {
         <div class="acts">${btns}</div></div>`;
     }).join('');
   }).join('');
-  $('v-qs').innerHTML = `<div class="wrap">${toolbar('qs')}${body}</div>`;
+  const qbtn = `<button class="btn small" type="button" data-act="qedit" aria-pressed="${qedit}">${qedit ? '書き終える' : '書き換える'}</button>`;
+  const send = qedit ? '' : `<button class="btn wide navy" type="button" data-act="qSheet">質問シートを送る（PDF）</button>${sheetBlob ? `<button class="btn wide gold" type="button" data-act="qSheetSend">できた質問シートを送る</button>` : ''}`;
+  $('v-qs').innerHTML = `<div class="wrap">${toolbar('qs', qbtn)}${send}${body}</div>`;
+  if (qedit) $('v-qs').querySelectorAll('textarea[data-qf]').forEach(t => { t.rows = 1; t.style.height = 'auto'; t.style.height = t.scrollHeight + 3 + 'px'; });
 }
 function chkText() {
   const out = [EP ? `${progById(progOf(EP)).name}　${EP.title || ''}` : '', '打ち合わせの確認事項'];
@@ -622,19 +768,19 @@ function chkText() {
 // 受け渡しのファイル。形は アプリ/撮影帳/移し方.md：{format:'toredaka/1', kind, exportedAt, programs[{id,…}], episodes[{id, episode, log[], answers{}}]}
 const stampNow = () => { const d = new Date(); return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`; };
 const progOut = id => { const p = Object.assign({}, progById(id)); return p; };
-async function saveFile(name, obj) {
-  const data = JSON.stringify(obj, null, 2);
+async function saveFile(name, obj) { return saveBlob(name, new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' }), 'application/json', '書き出しました'); }
+// 端末に渡す：公開版は共有の画面（AirDrop・LINE・メールなど）、claude.ai では保存の確認。共有が時間切れで開けなかったら 'retry'（もう一度押してもらう）
+async function saveBlob(name, blob, type, done) {
   if (!LOCAL) {
     const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
-    if (!dl) { toast('この画面では書き出せません'); return; }
-    try { await dl.save({ filename: name, data }); toast('書き出しました'); } catch (err) { if (!err || err.code !== 'declined') toast('書き出せませんでした'); }
-    return;
+    if (!dl) { toast('この画面では書き出せません'); return 'ng'; }
+    try { await dl.save({ filename: name, data: blob }); toast(done); return 'ok'; } catch (err) { if (!err || err.code !== 'declined') toast('書き出せませんでした'); return 'ng'; }
   }
-  const file = new File([data], name, { type: 'application/json' });
-  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); toast('書き出しました'); return; } }
-  catch (err) { if (err && err.name === 'AbortError') return; }
+  const file = new File([blob], name, { type });
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); toast(done); return 'ok'; } }
+  catch (err) { if (err && err.name === 'AbortError') return 'ok'; if (err && err.name === 'NotAllowedError') { toast('もう一度「できた質問シートを送る」を押してください'); return 'retry'; } }
   const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; document.body.appendChild(a); a.click();
-  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); toast('書き出しました');
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); toast(done); return 'ok';
 }
 const epBundle = () => ({ format: 'toredaka/1', kind: 'episode', exportedAt: new Date().toISOString(), programs: [progOut(progOf(EP))],
   episodes: [{ id: epId, episode: EP, log: EV.map(e => { const c = Object.assign({}, e); delete c._local; return c; }), answers: ANS }] });
@@ -852,7 +998,12 @@ document.addEventListener('click', e => {
   if (act === 'q') { logEvent('q', { ref: id }); return; }
   if (act === 'qend') { logEvent('qend', { ref: id }); return; }
   if (act === 'good') { logEvent('good', { ref: id }); toast('★'); return; }
-  if (act === 'edit') { editing = !editing; addOpen = null; render(); return; }
+  if (act === 'edit') { editing = !editing; qedit = false; addOpen = null; render(); return; }
+  if (act === 'qedit') { qedit = !qedit; editing = false; qDelArm = null; addOpen = null; document.activeElement && document.activeElement.blur(); render(); return; }
+  if (act === 'qMove') { qDelArm = null; moveQ(a.dataset.id, +a.dataset.d); return; }
+  if (act === 'qDel') { if (qDelArm !== a.dataset.id) { qDelArm = a.dataset.id; render(); return; } qDelArm = null; saveQs(items().filter(it => it.id !== a.dataset.id), '消しました'); return; }
+  if (act === 'qSheet') { sendSheet(); return; }
+  if (act === 'qSheetSend') { const b = sheetBlob; if (!b) return; saveBlob(sheetName(), b, 'application/pdf', '質問シートを送りました').then(r => { if (r !== 'retry') { sheetBlob = null; render(); } }); return; }
   if (act === 'add') { addOpen = addOpen === a.dataset.where ? null : a.dataset.where; render(); if (addOpen) { const f = $('addText'); if (f) f.focus(); } return; }
   if (act === 'addClose') { addOpen = null; document.activeElement && document.activeElement.blur(); render(); return; }
   if (act === 'delItem') { e.preventDefault(); saveItems(items().filter(it => it.id !== id)); toast('消しました'); return; }
@@ -889,13 +1040,21 @@ document.addEventListener('keydown', e => {
 document.addEventListener('change', e => {
   const el = e.target;
   if (el.id === 'importIn') { if (el.files && el.files[0]) importFile(el.files[0]); return; }
+  if (el.dataset.qf) {
+    const f = el.dataset.qf, id = el.dataset.id, v = f === 'text' || f === 'note' ? el.value.trim() : el.value, it = items().find(x => x.id === id);
+    if (!it || (it[f] || '') === v) return;
+    if (f === 'text' && !v) { el.value = it.text; toast('質問が空です'); return; }
+    saveQs(items().map(x => x.id === id ? Object.assign({}, x, { [f]: v }) : x), '保存しました'); return;
+  }
   if (el.dataset.use) { saveItems(items().map(it => it.id === el.dataset.use ? Object.assign({}, it, { use: el.checked }) : it)); return; }
   if (el.dataset.epf) { const v = el.value.trim(); if ((EP[el.dataset.epf] || '') !== v) { saveEp({ [el.dataset.epf]: v }); toast('保存しました'); } return; }
   if (el.dataset.ans) { const id = el.dataset.ans; clearTimeout(ansT[id]); if (((ANS[id] || {}).a || '') !== el.value) { saveAnswer(id, el.value); toast('保存しました'); } return; }
   if (el.classList.contains('noteIn')) { noteEvent(el.dataset.ev, el.value); toast('メモを残しました'); }
 });
+document.addEventListener('focusout', () => { if (qedit) setTimeout(() => { if (!typingIn($('v-qs'))) render(); }, 60); });
 document.addEventListener('input', e => {
   const el = e.target;
+  if (el.dataset && el.dataset.qf && el.tagName === 'TEXTAREA') { el.rows = 1; el.style.height = 'auto'; el.style.height = el.scrollHeight + 3 + 'px'; return; }   // 書き換え中の欄は打つと伸びる
   if (!el.dataset || !el.dataset.ans) return;
   const id = el.dataset.ans;
   clearTimeout(ansT[id]);
@@ -1001,7 +1160,7 @@ function localDb() {
   return { doc, collection, local: true, all: () => clone(store), put: (path, body) => { store[path] = clone(body); }, commit: () => { if (!persist()) return false; fire(); return true; } };
 }
 // 中身を受け取る（公開版だけ）：Claude が toredaka に置いた nakami.bin（AES-256-GCM。鍵は端末の中だけ）を取り、回の中身を入れ替える。作り手は GitHub/中身を配る.js
-// 入れ替えても残すもの：押した記録・答え（別の場所にある）、現場で足した項目（src: 'field'）、使う／使わない（use）、カメラの設定（cams）。中身が変わった回だけ入れ替える（feedHash）
+// 入れ替えても残すもの：押した記録・答え（別の場所にある）、現場で足した項目（src: 'field'）、使う／使わない（use）、カメラの設定（cams）、端末で書き換えた質問（qsLocal）。中身が変わった回だけ入れ替える（feedHash）
 let feedBusy = false, feedLast = 0;
 async function pullFeed(quiet) {
   const k = LS.get('feedKey', '');
@@ -1026,6 +1185,7 @@ async function pullFeed(quiet) {
         const off = new Set((cur.items || []).filter(x => x.use === false).map(x => x.id)), ids = new Set((b.items || []).map(x => x.id));
         b.items = (b.items || []).map(x => off.has(x.id) ? Object.assign({}, x, { use: false }) : x).concat((cur.items || []).filter(x => x.src === 'field' && !ids.has(x.id)));
         if (Array.isArray(cur.cams)) b.cams = cur.cams;
+        if (cur.qsLocal) { b.items = b.items.filter(x => x.kind !== 'q').concat((cur.items || []).filter(x => x.kind === 'q')); b.qsLocal = true; }   // 端末で書き換えた質問は上書きしない
       }
       db.put(`episodes/${e.id}`, b); seen[e.id] = e.hash; names.push(b.title || e.id);
     });
