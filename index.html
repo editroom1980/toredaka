@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="トレダカ">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<script>window.TOREDAKA_BUILD = "20261109212438";</script>
+<script>window.TOREDAKA_BUILD = "20261110044635";</script>
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 </head><body>
 <title>トレダカ</title>
@@ -189,6 +189,8 @@ h3 { font-family: var(--mincho); font-size: 14px; font-weight: 800; letter-spaci
 .q .txt { font-size: 15px; font-weight: 700; min-width: 0; }
 .q .role { flex: none; margin-left: auto; font-size: 11px; font-weight: 700; letter-spacing: .08em; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
 .q .role.core { border-color: var(--accent); color: var(--accent); }
+.q.sub .txt { color: var(--muted); font-weight: 500; } .q .role.sub { border-style: dashed; }
+.qsubh { margin: 14px 2px 4px; font-size: 12px; font-weight: 700; letter-spacing: .06em; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 8px; }
 .q.qe .qt { align-items: flex-start; }
 .q.qe .qt .field { flex: 1; }
 .q.qe textarea { resize: none; overflow: hidden; line-height: 1.5; }
@@ -604,7 +606,7 @@ function viewDay() {
 function qEditHTML(it, its) {
   const id = esc(it.id), i = its.indexOf(it), arm = qDelArm === it.id;
   const secOpts = sections().map(s => `<option value="${esc(s.id)}"${s.id === it.section ? ' selected' : ''}>${esc(s.name)}</option>`).join('');
-  const roleOpts = [['前提', '前提'], ['核心', '核心'], ['', 'なし']].map(([v, l]) => `<option value="${v}"${(it.role || '') === v ? ' selected' : ''}>${l}</option>`).join('');
+  const roleOpts = [['前提', '前提'], ['核心', '核心'], ['補足', '補足'], ['', 'なし']].map(([v, l]) => `<option value="${v}"${(it.role || '') === v ? ' selected' : ''}>${l}</option>`).join('');
   return `<div class="q qe${used(it) ? '' : ' off'}">
     <div class="qt"><span class="no">${esc(it.no || '')}</span><label class="field" for="qt-${id}"><span>質問</span><textarea id="qt-${id}" rows="${Math.max(2, Math.ceil([...(it.text || '')].length / 14))}" data-qf="text" data-id="${id}">${esc(it.text)}</textarea></label></div>
     <label class="field" for="qn-${id}"><span>狙い（質問シートに載ります）</span><textarea id="qn-${id}" rows="${Math.max(1, Math.ceil([...(it.note || '')].length / 21))}" data-qf="note" data-id="${id}">${esc(it.note || '')}</textarea></label>
@@ -742,7 +744,9 @@ async function sheetPages() {
       text([c.title || ''], `800 34px ${MIN}`, INK, M, 50);
       if (c.tsunagi) text(wrap(`つなぎ：「${c.tsunagi}」`, `400 21px ${GO}`, CW), `400 21px ${GO}`, MUTE, M, 32);
       y += 4;
-      (c.points || []).forEach((p, i) => {
+      // 要点は質問の行から（補足と締めは入れない）。古い回は c.points
+      const pts = c.points || qs.filter(it => (c.sections || []).includes(it.section) && it.role !== '補足').map(it => ({ t: it.rich || it.text, q: it.qref || '' }));
+      pts.forEach((p, i) => {
         const TX = M + 48, TW = CW - 48 - 96, ls = layout(p.t, TW), h = ls.length * 42 + 20;
         room(h);
         g.fillStyle = LINE; g.fillRect(M, y, CW, 1);
@@ -807,21 +811,27 @@ function viewQs() {
   else body = sections().concat([{ id: '', name: '区間なし' }]).map(sec => {
     const its = qs.filter(it => (it.section || '') === sec.id);
     if (!its.length) return '';
-    return `<div class="qanchor" id="qsec-${esc(sec.id)}"></div>` + secHead(sec, `${its.filter(it => qState(it.id).done).length}/${its.length}`) + its.map(it => {
+    return `<div class="qanchor" id="qsec-${esc(sec.id)}"></div>` + secHead(sec, `${its.filter(it => qState(it.id).done).length}/${its.length}`) + its.map((it, i) => {
       if (qedit) return qEditHTML(it, its);
+      // 補足（ディレクターが聞く）の始まりに小見出し。要点の話から溢れた質問を、録画を止める前に聞く
+      const subh = !editing && it.role === '補足' && (i === 0 || its[i - 1].role !== '補足') ? '<div class="qsubh">補足質問（ディレクター）　話に出なかったものを、録画を止める前に</div>' : '';
+      if (subh) return subh + qRowHTML(it);
+      return qRowHTML(it);
+    }).join('');
+  }).join('');
+  function qRowHTML(it) {
       if (editing) return editRowHTML(it);
       const s = qState(it.id);
       const cls = s.asking ? ' asking' : s.done ? ' done' : '';
       const btns = s.asking
         ? `<button class="btn gold" data-act="good" data-id="${esc(it.id)}">★ 良い答え</button><button class="btn navy" data-act="qend" data-id="${esc(it.id)}">終わり</button>`
         : `<button class="btn${s.asked ? ' ghost' : ' navy'}" data-act="q" data-id="${esc(it.id)}">${s.asked ? 'もう一度聞く' : '聞く'}</button>${s.last ? `<button class="btn small ghost" data-act="undo" data-ev="${esc(s.last.id)}">取り消す</button>` : ''}`;
-      return `<div class="q${it.must ? ' must' : ''}${it.role === '前提' ? ' lead' : ''}${cls}">
-        <div class="qt"><span class="no">${esc(it.no || '')}</span><span class="txt">${esc(it.text)}</span>${it.role ? `<span class="role${it.role === '核心' ? ' core' : ''}">${esc(it.role)}</span>` : ''}</div>
+      return `<div class="q${it.must ? ' must' : ''}${it.role === '前提' ? ' lead' : ''}${it.role === '補足' ? ' sub' : ''}${cls}">
+        <div class="qt"><span class="no">${esc(it.no || '')}</span><span class="txt">${esc(it.text)}</span>${it.role ? `<span class="role${it.role === '核心' ? ' core' : it.role === '補足' ? ' sub' : ''}">${esc(it.role)}</span>` : ''}</div>
         ${it.note ? `<span class="note">${esc(it.note)}</span>` : ''}
         ${s.asked ? `<span class="stamp">${s.asking ? '聞いている　' : ''}${hms(s.last.at)}${s.n > 1 ? `　${s.n}回` : ''}${s.good ? `　<span class="stars">${'★'.repeat(Math.min(s.good, 3))}</span>` : ''}</span>` : ''}
         <div class="acts">${btns}</div></div>`;
-    }).join('');
-  }).join('');
+  }
   const qbtn = `<button class="btn small" type="button" data-act="qedit" aria-pressed="${qedit}">${qedit ? '書き終える' : '書き換える'}</button>`;
   const send = qedit ? '' : `<button class="btn wide navy" type="button" data-act="qSheet">質問シートを送る（PDF）</button>${sheetBlob ? `<button class="btn wide gold" type="button" data-act="qSheetSend">できた質問シートを送る</button>` : ''}`;
   $('v-qs').innerHTML = `<div class="wrap">${toolbar('qs', qbtn)}${send}${body}</div>`;
