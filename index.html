@@ -2,12 +2,13 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
-<meta name="theme-color" content="#f3eee3">
+<meta name="theme-color" content="#f3eee3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111a2b" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="トレダカ">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<script>window.TOREDAKA_BUILD = "20261110044635";</script>
+<script>window.TOREDAKA_BUILD = "20261110045015";</script>
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 </head><body>
 <title>トレダカ</title>
@@ -51,13 +52,16 @@
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html, body { height: 100%; }
-body { margin: 0; background: var(--bg) var(--grain); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.5; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+/* ★画面の上のぼやけ（iPhone のホーム画面のアプリ）：ノッチの下に模様の地が来ると、iOS がそこをぼかす。
+   ページの地と上の帯は無地の同じ色、theme-color も同じ色。画面の箱は固定し、ページ自体は動かさない（キネコマ 3.2・キューシートと同じ作り） */
+html { height: 100%; overflow: hidden; background: var(--bg); }
+body { height: 100%; overflow: hidden; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 16px; line-height: 1.5; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; touch-action: manipulation; }
 :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
-#app { display: flex; flex-direction: column; height: 100%; }
+#app { position: fixed; top: env(safe-area-inset-top, 0px); left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; background: var(--bg) var(--grain); }
 
 /* 上：番組の札。番組の名前は小さく、会社（回）の名前を大きく、撮影日と開始を1行で */
 .top { flex: 0 0 auto; display: flex; align-items: stretch; gap: 6px;
