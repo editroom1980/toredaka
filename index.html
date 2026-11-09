@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="トレダカ">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<script>window.TOREDAKA_BUILD = "20261106064744";</script>
+<script>window.TOREDAKA_BUILD = "20261109130742";</script>
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 </head><body>
 <title>トレダカ</title>
@@ -661,7 +661,7 @@ async function sheetPages() {
   const when = [dm ? `撮影　${dm[1]}年${+dm[2]}月${+dm[3]}日（${wd}）${EP.call ? `　${EP.call}〜` : ''}` : '', EP.place ? `場所　${EP.place}` : ''].filter(Boolean).join('　　');
   y += 6; text(wrap(when, `400 26px ${GO}`, CW), `400 26px ${GO}`, INK, M, 40);
   y += 14;
-  const lead = wrap('このシートはリポーター専用です。場面の流れに合わせて使い、無理に全部聞く必要はありません。会話の自然な流れを最優先にしてください。', `400 24px ${GO}`, CW - 40);
+  const lead = wrap('このシートはリポーター専用です。', `400 24px ${GO}`, CW - 40);
   const legend = qs.some(it => it.role) ? wrap('印　前提＝話の土台をつくる問い　／　核心＝番組で使う答えを引き出す問い。前提の答えを受けて、核心の問いにつながるように並べています。', `400 22px ${GO}`, CW - 40) : [];
   const bh = 28 + lead.length * 36 + (legend.length ? 10 + legend.length * 32 : 0) + 22;
   g.strokeStyle = LINE; g.lineWidth = 2; g.strokeRect(M, y, CW, bh); y += 24;
