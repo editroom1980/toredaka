@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="トレダカ">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<script>window.TOREDAKA_BUILD = "20261109130742";</script>
+<script>window.TOREDAKA_BUILD = "20261109132308";</script>
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px -apple-system,system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 </head><body>
 <title>トレダカ</title>
@@ -655,12 +655,13 @@ async function sheetPages() {
   page();
   // 頭
   text([prog.name || ''], `700 24px ${GO}`, MUTE, M, 36);
-  text(['リポーター用質問シート'], `800 52px ${MIN}`, INK, M, 72);
+  text([EP.yoten ? '質問の要点（リポーター用）' : 'リポーター用質問シート'], `800 52px ${MIN}`, INK, M, 72);
   text(wrap(EP.title || '', `800 40px ${MIN}`, CW), `800 40px ${MIN}`, INK, M, 56);
   const dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(EP.date || ''), wd = dm ? '日月火水木金土'[new Date(+dm[1], dm[2] - 1, +dm[3]).getDay()] : '';
   const when = [dm ? `撮影　${dm[1]}年${+dm[2]}月${+dm[3]}日（${wd}）${EP.call ? `　${EP.call}〜` : ''}` : '', EP.place ? `場所　${EP.place}` : ''].filter(Boolean).join('　　');
   y += 6; text(wrap(when, `400 26px ${GO}`, CW), `400 26px ${GO}`, INK, M, 40);
   y += 14;
+  if (EP.yoten) { drawYoten(); return footer(); }
   const lead = wrap('このシートはリポーター専用です。', `400 24px ${GO}`, CW - 40);
   const legend = qs.some(it => it.role) ? wrap('印　前提＝話の土台をつくる問い　／　核心＝番組で使う答えを引き出す問い。前提の答えを受けて、核心の問いにつながるように並べています。', `400 22px ${GO}`, CW - 40) : [];
   const bh = 28 + lead.length * 36 + (legend.length ? 10 + legend.length * 32 : 0) + 22;
@@ -700,8 +701,75 @@ async function sheetPages() {
     });
     y += 18;
   });
-  pages.forEach((c, i) => { const x = c.getContext('2d'); x.font = `400 20px ${GO}`; x.fillStyle = MUTE; x.textAlign = 'center'; x.textBaseline = 'top'; x.fillText(`${EP.title || ''}　質問シート　${i + 1} / ${pages.length}`, W / 2, H - M + 10); });
-  return pages;
+  return footer();
+  function footer() {
+    pages.forEach((c, i) => { const x = c.getContext('2d'); x.font = `400 20px ${GO}`; x.fillStyle = MUTE; x.textAlign = 'center'; x.textBaseline = 'top'; x.fillText(`${EP.title || ''}　質問シート　${i + 1} / ${pages.length}`, W / 2, H - M + 10); });
+    return pages;
+  }
+  // 要点（EP.yoten）：話題ごとに1行。「 → 」と「｜」で区切ったかたまりは、入るなら途中で折らない。**…** は太字（番組の芯）
+  function drawYoten() {
+    const Y = EP.yoten, NAVY = '#23395b', FB = `800 28px ${GO}`, FR = `400 28px ${GO}`;
+    const mw = r => { mg.font = r.b ? FB : FR; return mg.measureText(r.t).width; };
+    const runsOf = u => u.split('**').map((t, i) => ({ t, b: i % 2 === 1 })).filter(r => r.t);
+    const layout = (s, w) => {
+      const units = [], parts = String(s).split(' → ');
+      parts.forEach((p, i) => { const ps = p.split('｜'); ps.forEach((u, j) => units.push((i && !j ? ' ' : '') + u + (i < parts.length - 1 && j === ps.length - 1 ? ' →' : ''))); });
+      const lines = [[]]; let x = 0;
+      for (const u of units) {
+        const rs = runsOf(u), uw = rs.reduce((a, r) => a + mw(r), 0);
+        if (x + uw <= w) { lines[lines.length - 1].push(...rs); x += uw; continue; }
+        if (uw <= w && x > 0) { if (rs[0]) rs[0].t = rs[0].t.replace(/^ /, ''); lines.push(rs.filter(r => r.t)); x = rs.reduce((a, r) => a + mw(r), 0); continue; }
+        for (const r of rs) for (const ch of r.t) {
+          const cw = mw({ t: ch, b: r.b });
+          if (x + cw > w && x > 0) { lines.push([]); x = 0; if (ch === ' ') continue; }
+          const L = lines[lines.length - 1], last = L[L.length - 1];
+          if (last && last.b === r.b) last.t += ch; else L.push({ t: ch, b: r.b });
+          x += cw;
+        }
+      }
+      return lines.filter(l => l.length);
+    };
+    if ((Y.flow || []).length) {   // 流れは項目の切れ目でだけ折る
+      const f = `400 22px ${GO}`, sep = '　›　'; mg.font = f; const ls = ['']; 
+      Y.flow.forEach((it, i) => { const add = (i ? sep : '') + it; if (ls[ls.length - 1] && mg.measureText(ls[ls.length - 1] + add).width > CW) ls.push(it); else ls[ls.length - 1] += add; });
+      text(ls, f, MUTE, M, 34);
+    }
+    y += 10;
+    (Y.chapters || []).forEach(c => {
+      room(150 + 110); y += 12;   // 見出しだけをページの下に残さない（1行目まで一緒に送る）
+      g.fillStyle = NAVY; g.fillRect(M, y, CW, 4); y += 16;
+      text([`${c.ch || ''}「${c.name || ''}」`], `700 22px ${GO}`, GOLD, M, 32);
+      text([c.title || ''], `800 34px ${MIN}`, INK, M, 50);
+      if (c.tsunagi) text(wrap(`つなぎ：「${c.tsunagi}」`, `400 21px ${GO}`, CW), `400 21px ${GO}`, MUTE, M, 32);
+      y += 4;
+      (c.points || []).forEach((p, i) => {
+        const TX = M + 48, TW = CW - 48 - 96, ls = layout(p.t, TW), h = ls.length * 42 + 20;
+        room(h);
+        g.fillStyle = LINE; g.fillRect(M, y, CW, 1);
+        const y0 = y + 10;
+        g.font = `800 30px ${GO}`; g.fillStyle = GOLD; g.fillText(String(i + 1), M + 4, y0 - 1);
+        ls.forEach((l, k) => { let x = TX; l.forEach(r => { g.font = r.b ? FB : FR; g.fillStyle = r.b ? INK : '#3a3a3a'; g.fillText(r.t, x, y0 + k * 42); x += g.measureText(r.t).width; }); });
+        if (p.q) { g.font = `400 18px ${GO}`; g.fillStyle = '#9a958c'; g.textAlign = 'right'; g.fillText(p.q, M + CW, y0 + 6); g.textAlign = 'left'; }
+        y += h;
+      });
+    });
+    const end = qs.find(it => it.section === 'end');
+    if (end) {
+      const tl = wrap(`「${end.text}」`, `800 36px ${MIN}`, CW - 60), h = 26 + 34 + tl.length * 52 + (end.note ? 32 : 0) + 22;
+      room(h + 30); y += 24;
+      g.strokeStyle = GOLD; g.lineWidth = 3; g.strokeRect(M, y, CW, h); const y0 = y; y += 26;
+      text(['締めの質問（番組の定型）'], `700 22px ${GO}`, GOLD, M + 30, 34);
+      text(tl, `800 36px ${MIN}`, INK, M + 30, 52);
+      if (end.note) text([end.note], `400 20px ${GO}`, MUTE, M + 30, 30);
+      y = y0 + h + 22;
+    }
+    if ((Y.memo || []).length) {
+      const f = `400 22px ${GO}`, ls = Y.memo.flatMap(m => wrap('・' + m, f, CW - 20));
+      room(44 + ls.length * 34);
+      text(['覚えておくこと'], `700 22px ${GO}`, NAVY, M, 36); text(ls, f, INK, M, 34);
+    }
+    if (Y.legend) { y += 12; const f = `400 18px ${GO}`; text(wrap(Y.legend, f, CW), f, MUTE, M, 28); }
+  }
 }
 async function pdfOf(cs) {   // 画（JPEG）を1ページずつ並べた PDF を組む
   const enc = new TextEncoder(), parts = [], offs = []; let len = 0;
